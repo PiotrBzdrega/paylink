@@ -21,9 +21,13 @@ if (NOT AES_LIB)
 endif()
 message(STATUS "lib path=${AES_LIB}")
 
+# Include directories for headers
+include_directories("${CMAKE_SOURCE_DIR}/include")
 
+# Specify the directory containing your source files
+file(GLOB SOURCES "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} ${SOURCES})
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -38,6 +42,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     -O2
     -g0
     -Wall
+    -Wextra
+    -Wpedantic
     -pedantic
     # -Wstrict-prototypes
     -pipe
