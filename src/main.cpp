@@ -173,7 +173,6 @@ int main()
     while (!signal_received.load(std::memory_order_relaxed))
     /* ACCEPTORS */
     {
-
         /*
         main
         create_win_acceptors
@@ -181,7 +180,7 @@ int main()
         DataFn_StartAcceptorTimer - starts timer that calls "DataFn_AcceptorUpdateData" every 500ms
         DataFn_AcceptorUpdateData
         */
-        static acceptor Acceptor;
+        static acceptor Acceptor(2000ms);
         /* The sequence numbers of the acceptors are contiguous and run from zero upwards. */
         /* The ReadAcceptorDetails call provides a snapshot of all the information
         possessed by the interface on a single unit of money handling equipment. */

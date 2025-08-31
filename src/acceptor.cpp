@@ -20,15 +20,19 @@ namespace paylink
     {
         auto is_inhibit = static_cast<bool>(block.Status & ACCEPTOR_INHIBIT);
 
-        if(state && !is_inhibit)
+        if (state && !is_inhibit)
         {
             block.Status |= ACCEPTOR_INHIBIT;
         }
-        else
-        if (!state && is_inhibit)       
+        else if (!state && is_inhibit)
         {
             block.Status &= ~ACCEPTOR_INHIBIT;
         }
+    }
+
+    acceptor::acceptor(std::chrono::milliseconds updateTime)
+    {
+        worket_thread = std::jthread(update, this, updateTime);
     }
 
     std::string_view acceptor::unitToString()
@@ -306,8 +310,17 @@ namespace paylink
             return "No Key";
             break;
         default:
-            return std::format("{:08x}",block.Status);
+            return std::format("{:08x}", block.Status);
             break;
         }
+    }
+
+    void acceptor::update(std::chrono::milliseconds updateTime)
+    {
+
+
+
+
+        std::this_thread::sleep_for(updateTime);
     }
 }
