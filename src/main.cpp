@@ -186,6 +186,7 @@ int main()
         possessed by the interface on a single unit of money handling equipment. */
         for (size_t i = 0; ReadAcceptorDetails(i, &Acceptor); i++)
         {
+            std::println("index {}",i);
             Acceptor.debug_info();
             Acceptor.setInhibit(false);
         }

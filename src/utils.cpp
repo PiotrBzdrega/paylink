@@ -183,6 +183,11 @@ namespace paylink
             {
                 std::this_thread::sleep_for(20s);
             }
+            else
+            {
+                /* sucessfully leave */
+                break;
+            }
         };
 
         return {value,description};

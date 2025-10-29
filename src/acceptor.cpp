@@ -11,6 +11,7 @@ namespace paylink
         std::println("UnitAddress: {}", block.UnitAddress);
         std::println("Currency: {}", block.Currency);
         std::println("DefaultPath: {}", block.DefaultPath);
+        std::println("NoOfCoins: {}", block.NoOfCoins);
         // std::println("Description: {}", block.Description); //TODO: crash
         std::println("SerialNumber: {}", block.SerialNumber);
         std::println();
@@ -28,11 +29,12 @@ namespace paylink
         {
             block.Status &= ~ACCEPTOR_INHIBIT;
         }
+        // WriteAcceptorDetails(AcceptorIndex, &Acceptor);
     }
 
     acceptor::acceptor(std::chrono::milliseconds updateTime)
     {
-        worket_thread = std::jthread(update, this, updateTime);
+        // worket_thread = std::jthread(update, this, updateTime);
     }
 
     std::string_view acceptor::unitToString()
