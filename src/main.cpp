@@ -85,6 +85,10 @@ int main()
     utils::OpenMHEVersion();
 
     /*-- Determine total amount read ----------------------------------*/
+    /* 
+        This value should be read following the call to OpenMHE and before the call to 
+        EnableInterface to establish a starting point before any coins or notes are read 
+    */
     int LastCurrencyValue = CurrentValue();
     std::println("Initial currency accepted = {} pence", LastCurrencyValue);
 
@@ -100,6 +104,8 @@ int main()
     or notes into the system. This would be called when a game is
     initialised and ready to accept credit. */
     EnableInterface();
+
+CheckOperation() two times must be called, check how does it work
 
     {
         /*-- Determine total amount paid out --------------------------------*/
@@ -120,6 +126,11 @@ int main()
     {
         auto lay_pay = utils::LastPayoutStatus();
         std::println("Last pay status: [{}] {}", lay_pay.first, lay_pay.second);
+        /* 
+        TODO: Check PayOut example 
+        Following a call to PayOut, the programmer should poll this to 
+        check the progress of the operation .
+        */
     }
 
     // char Line[80] ;
@@ -170,6 +181,11 @@ int main()
         std::println("Switch 7 state: {}", switch7_state == true ? "open" : "closed");
     }
 
+    {
+        auto status = int DESStatus();
+        std::println("DESStatus {}",status);
+    }
+
     while (!signal_received.load(std::memory_order_relaxed))
     /* ACCEPTORS */
     {
@@ -184,6 +200,7 @@ int main()
         /* The sequence numbers of the acceptors are contiguous and run from zero upwards. */
         /* The ReadAcceptorDetails call provides a snapshot of all the information
         possessed by the interface on a single unit of money handling equipment. */
+        // TODO: why first call gives status Disabled ??
         for (size_t i = 0; ReadAcceptorDetails(i, &Acceptor); i++)
         {
             std::println("index {}",i);
