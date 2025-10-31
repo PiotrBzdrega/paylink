@@ -186,6 +186,8 @@ CheckOperation() two times must be called, check how does it work
         std::println("DESStatus {}",status);
     }
 
+    // TODO: IS_NOTE_ACCEPTOR(Unit),
+
     while (!signal_received.load(std::memory_order_relaxed))
     /* ACCEPTORS */
     {
