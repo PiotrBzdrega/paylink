@@ -1,7 +1,7 @@
 #pragma once
 #include <string_view>
 #include "Aesimhei.h"
-#include <thread>
+
 #include <chrono>
 
 namespace paylink
@@ -10,25 +10,21 @@ namespace paylink
     {
     private:
         AcceptorBlock block;
-        std::jthread worket_thread;
         std::string_view unitToString();
         std::string_view statusToString();
-        void update(std::chrono::milliseconds updateTime);
+        void update();
+        bool init_ok{};
+
     public:
+        bool init();
+
         void debug_info();
         void setInhibit(bool state);
         AcceptorBlock *operator&()
         {
             return &block;
         }
-        acceptor(std::chrono::milliseconds updateTime);
+        acceptor() = default;
+        bool initialized() { return init_ok; }
     };
-
-    // acceptor::acceptor(/* args */)
-    // {
-    // }
-
-    // acceptor::~acceptor()
-    // {
-    // }
 }

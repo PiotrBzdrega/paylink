@@ -32,11 +32,6 @@ namespace paylink
         // WriteAcceptorDetails(AcceptorIndex, &Acceptor);
     }
 
-    acceptor::acceptor(std::chrono::milliseconds updateTime)
-    {
-        // worket_thread = std::jthread(update, this, updateTime);
-    }
-
     std::string_view acceptor::unitToString()
     {
         switch (block.Unit)
@@ -317,12 +312,37 @@ namespace paylink
         }
     }
 
-    void acceptor::update(std::chrono::milliseconds updateTime)
+    bool acceptor::init()
     {
+        /*
+            main
+            create_win_acceptors
+            on_win_acceptors_show
+            DataFn_StartAcceptorTimer - starts timer that calls "DataFn_AcceptorUpdateData" every 500ms
+            DataFn_AcceptorUpdateData
+        */
+        /* The sequence numbers of the acceptors are contiguous and run from zero upwards. */
+        /* The ReadAcceptorDetails call provides a snapshot of all the information
+        possessed by the interface on a single unit of money handling equipment. */
+        // TODO: why first call gives status Disabled ??
+        size_t acceptor_no{};
+        for (size_t i = 0; i < 2; i++)
+        {
+            for (; ReadAcceptorDetails(acceptor_no, operator&()); ++acceptor_no)
+            {
+                std::println("index {}", acceptor_no);
+                debug_info();
+                setInhibit(false);
+                // WriteAcceptorDetails(acceptor_no, operator&());
+            }
+            std::println("i {}", i);
+        }
 
+        /* 0 -> false, acceptor not detected */
+       return (init_ok = static_cast<bool>(acceptor_no));
+    }
 
-
-
-        std::this_thread::sleep_for(updateTime);
+    void acceptor::update()
+    {
     }
 }

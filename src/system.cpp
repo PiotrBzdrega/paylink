@@ -1,0 +1,249 @@
+#include "system.h"
+#include "utils.h"
+#include "ImheiEvent.h"
+#include <print>
+#include <chrono>
+
+using namespace std::chrono_literals;
+
+namespace paylink
+{
+    namespace
+    {
+        std::string_view decode_event(int event)
+        {
+            switch (event)
+            {
+            case IMHEI_NULL:
+                return "Null";
+            case IMHEI_INTERFACE_START:
+                return "Interface Start";
+            case IMHEI_APPLICATION_START:
+                return "Application Start";
+            case IMHEI_APPLICATION_EXIT:
+                return "Application Exit";
+            case IMHEI_OVERFLOW:
+                return "Overflow";
+
+            /*-- Coin Acceptors -----------------------------------------------*/
+            case IMHEI_COIN_NOW_OK:
+                return "Coin: Now Ok";
+            case IMHEI_COIN_UNIT_REPORTED_FAULT:
+                return "Coin: Unit Reported Fault";
+            case IMHEI_COIN_UNIT_TIMEOUT:
+                return "Coin: Unit Timeout";
+            case IMHEI_COIN_UNIT_RESET:
+                return "Coin: Unit Reset";
+            case IMHEI_COIN_SELF_TEST_REFUSED:
+                return "Coin: Self Test Refused";
+            case IMHEI_COIN_REJECT_COIN:
+                return "Coin: Reject Coin";
+            case IMHEI_COIN_INHIBITED_COIN:
+                return "Coin: Inhibited Coin";
+            case IMHEI_COIN_FRAUD_ATTEMPT:
+                return "Coin: Fraud Attempt";
+            case IMHEI_COIN_ACCEPTOR_JAM:
+                return "Coin: Acceptor Jam";
+            case IMHEI_COIN_COIN_RETURN:
+                return "Coin: Coin Return";
+            case IMHEI_COIN_SORTER_JAM:
+                return "Coin: Sorter Jam";
+            case IMHEI_COIN_INTERNAL_PROBLEM:
+                return "Coin: Internal Problem";
+            case IMHEI_COIN_UNCLASSIFIED_EVENT:
+                return "Coin: Unclassified Event";
+
+            /*-- Note Acceptors -----------------------------------------------*/
+            case IMHEI_NOTE_NOW_OK:
+                return "Note: Now Ok";
+            case IMHEI_NOTE_UNIT_REPORTED_FAULT:
+                return "Note: Unit Reported Fault";
+            case IMHEI_NOTE_UNIT_TIMEOUT:
+                return "Note: Unit Timeout";
+            case IMHEI_NOTE_UNIT_RESET:
+                return "Note: Unit Reset";
+            case IMHEI_NOTE_SELF_TEST_REFUSED:
+                return "Note: Self Test Refused";
+            case IMHEI_NOTE_REJECT_NOTE:
+                return "Note: Reject Note";
+            case IMHEI_NOTE_INHIBITED_NOTE:
+                return "Note: Inhibited Note";
+            case IMHEI_NOTE_NOTE_MISREAD:
+                return "Note: Note Misread";
+            case IMHEI_NOTE_FRAUD_ATTEMPT:
+                return "Note: Fraud Attempt";
+            case IMHEI_NOTE_ACCEPTOR_JAM:
+                return "Note: Acceptor Jam";
+            case IMHEI_NOTE_ACCEPTOR_JAM_FIXED:
+                return "Note: Acceptor Jam Fixed";
+            case IMHEI_NOTE_NOTE_RETURNED:
+                return "Note: Note Returned";
+            case IMHEI_NOTE_STACKER_PROBLEM:
+                return "Note: Stacker Problem";
+            case IMHEI_NOTE_STACKER_FIXED:
+                return "Note: Stacker Fixed";
+            case IMHEI_NOTE_INTERNAL_ERROR:
+                return "Note: Internal Error";
+            case IMHEI_NOTE_UNCLASSIFIED_EVENT:
+                return "Note: Unclassified Event";
+
+            /*-- Coin Dispenser ------------------------------------------------*/
+            case IMHEI_COIN_DISPENSER_NOW_OK:
+                return "Hopper: Now OK";
+            case IMHEI_COIN_DISPENSER_REPORTED_FAULT:
+                return "Hopper: Unit Reported Fault";
+            case IMHEI_COIN_DISPENSER_TIMEOUT:
+                return "Hopper: Unit Timeout";
+            case IMHEI_COIN_DISPENSER_RESET:
+                return "Hopper: Unit Reset";
+            case IMHEI_COIN_DISPENSER_SELF_TEST_REFUSED:
+                return "Hopper: Self Test Refused";
+            case IMHEI_COIN_DISPENSER_FRAUD_ATTEMPT:
+                return "Hopper: Fraud Attempt";
+            case IMHEI_COIN_DISPENSER_UPDATE:
+                return "Hopper: Level Updated";
+
+            default:
+                return "Unknown Message Code";
+            }
+        }
+    }
+
+    system::system()
+    {
+        if (init())
+        {
+            note_acceptor.init();
+            // server_thr = std::jthread([this, &network_config](std::stop_token stoken)
+            //                               { this->serverHandler(stoken, network_config); });
+            worker_thread = std::jthread([this](std::stop_token stoken)
+                                         { this->get_events(stoken); });
+        }
+    }
+
+    bool system::init()
+    {
+        if (auto state = utils::OpenMHEVersion(); state.first != SUCCESS)
+        {
+            return false;
+        }
+
+        /*-- Determine total amount read ----------------------------------*/
+        /*
+            This value should be read following the call to OpenMHE and before the call to
+            EnableInterface to establish a starting point before any coins or notes are read
+        */
+        int LastCurrencyValue = CurrentValue();
+        std::println("Initial currency accepted = {} PLN", LastCurrencyValue / 100);
+
+        /*-- Determine if there has been an error ---------------------------*/
+        auto err_msg = IMHEIConsistencyError(STANDARD_COIN_TIME, STANDARD_NOTE_TIME);
+        if (err_msg && *err_msg)
+        {
+            std::println("[ERROR] {}", err_msg);
+            return false;
+        }
+
+        /* The EnableInterface call is used to allow users to enter coins
+        or notes into the system. This would be called when a game is
+        initialised and ready to accept credit. */
+        EnableInterface();
+
+        // CheckOperation() two times must be called, check how does it work
+
+        {
+            /*-- Determine total amount paid out --------------------------------*/
+            auto amount_paid = ((double)CurrentPaid() / 100.0);
+            std::println("Amout paid: {}", amount_paid);
+        }
+
+        {
+            auto platform_type = utils::PlatformType();
+            std::println("Platform type: [{}] {}", platform_type.first, platform_type.second);
+        }
+
+        {
+            int serial_number = SerialNumber();
+            std::println("Serial number: {}", serial_number);
+        }
+
+        {
+            auto lay_pay = utils::LastPayoutStatus();
+            std::println("Last pay status: [{}] {}", lay_pay.first, lay_pay.second);
+            /*
+            TODO: Check PayOut example
+            Following a call to PayOut, the programmer should poll this to
+            check the progress of the operation .
+            */
+        }
+
+        {
+            char compile_date[16], compile_time[16];
+            uint32_t version;
+            version = FirmwareVersion(&compile_date[0], &compile_time[0]);
+            uint8_t *version_ptr = (uint8_t *)&version;
+            std::println("Firmware version: {}.{}.{}.{}", version_ptr[3], version_ptr[2], version_ptr[1], version_ptr[0]);
+        }
+
+        {
+            auto driver_status = utils::USBDriverStatus();
+            std::println("Driver status: [{}] {}", driver_status.first, driver_status.second);
+        }
+
+        {
+            bool switch7_state = SwitchOpens(7) == SwitchCloses(7);
+            bool switch6_state = SwitchOpens(6) == SwitchCloses(6);
+            std::println("Switch 6 state: {}", switch6_state == true ? "open" : "closed");
+            std::println("Switch 7 state: {}", switch7_state == true ? "open" : "closed");
+        }
+
+        {
+            auto status = utils::DESStatus();
+            std::println("DESStatus [{}] {}", status.first, status.second);
+        }
+
+        return true;
+    }
+
+    void system::get_events(std::stop_token stop_token)
+    {
+        EventDetailBlock event_details;
+        while (!stop_token.stop_requested())
+        {
+            auto event = NextEvent(&event_details);
+            if (event != IMHEI_NULL)
+            {
+                auto text = decode_event(event);
+                if (event >= COIN_DISPENSER_EVENT)
+                {
+                    if (event_details.DispenserEvent == 0)
+                    {
+                        std::println("Event: {}, Raw Code: {:2X}, Acc: {:d}", text, event_details.RawEvent, event_details.Index);
+                    }
+                    else
+                    {
+                        std::println("Event: {}, Raw Code: {:2X}, Disp: {:d}", text, event_details.RawEvent, event_details.Index);
+                    }
+                }
+                else
+                {
+                    std::println("Event: {}, ", text);
+                }
+            }
+            std::this_thread::sleep_for(2s);
+        }
+    }
+
+    system::~system()
+    {
+        if (worker_thread.joinable())
+        {
+            worker_thread.join();
+        }
+        /* The DisableInterface call is used to prevent users from
+        entering any more coins or notes. */
+        DisableInterface();
+        std::println("DisableInterface");
+    }
+
+}

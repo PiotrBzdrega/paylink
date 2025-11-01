@@ -167,7 +167,7 @@ namespace paylink
             case ERROR_DEVICE_NOT_CONNECTED:
                 description = "ERROR_DEVICE_NOT_CONNECTED: No Paylink unit is connected";
                 retry = true;
-                break;                    
+                break;
             default:
                 break;
             }
@@ -177,7 +177,7 @@ namespace paylink
                                                            : "");
             if (exit)
             {
-                std::exit(EXIT_FAILURE);
+                // std::exit(EXIT_FAILURE);
             }
             else if (retry)
             {
@@ -190,6 +190,38 @@ namespace paylink
             }
         };
 
-        return {value,description};
+        return {value, description};
+    }
+    std::pair<int, std::string_view> utils::DESStatus()
+    {
+        int value;
+        std::string_view description;
+        value = ::DESStatus();
+
+        switch (value)
+        {
+        case DES_UNLOCKED:
+            description = "DES_UNLOCKED: The Paylink is unlocked";
+            break;
+        case DES_MATCH:
+            description = "DES_MATCH: DES Key matched by Paylink and PC";
+            break;
+        case DES_NOT:
+            description = "DES_NOT: Not a DES Paylink";
+            break;
+        case DES_WRONG:
+            description = "DES_WRONG: Paylink wrong key";
+            break;
+        case DES_CHECKING:
+            description = "DES_CHECKING: DES Key checking is still being performed.";
+            break;
+        case DES_APPLYING:
+            description = "DES_APPLYING: DES Lock is being applied";
+            break;
+        default:
+            break;
+        }
+
+        return {value, description};
     }
 }

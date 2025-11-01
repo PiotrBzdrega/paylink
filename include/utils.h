@@ -25,5 +25,6 @@ namespace paylink
         static std::pair<int, std::string_view> USBDriverStatus();
         static std::pair<int, std::string_view> PlatformType();
         static std::pair<int, std::string_view> OpenMHEVersion(int InterfaceVersion = INTERFACE_VERSION);
+        static std::pair<int, std::string_view> DESStatus();
     };
 }
