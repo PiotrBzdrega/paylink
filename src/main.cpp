@@ -95,6 +95,8 @@ int main()
     //     std::println("updates: {}", updates);
     // }
 
+    std::println("before cv.wait");
+
     {
         std::unique_lock<std::mutex> lk(m);
         cv.wait(

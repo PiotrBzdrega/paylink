@@ -1,192 +1,274 @@
 #include "dispenser.h"
+#include <print>
+#include <format>
 
 namespace paylink
 {
-            //     /*-- Determine unit type ------------------------------------------*/
-            // switch (Dispenser.Unit)
-            // {
-            // case DP_AS_WH2:
-            //     DispenserName = "Asahi Seiko Escalator";
-            //     break;
 
-            // case DP_AZK_HOPPER:
-            //     DispenserName = "Azkoyen Hopper";
-            //     break;
+    std::string_view dispenser::unitToString()
+    {
+        /*-- Determine unit type ------------------------------------------*/
+        switch (block.Unit)
+        {
+        case DP_AS_WH2:
+            return "Asahi Seiko Escalator";
+            break;
 
-            // case DP_AZK_HOPPER_U:
-            //     DispenserName = "Azkoyen Hopper U";
-            //     break;
+        case DP_AZK_HOPPER:
+            return "Azkoyen Hopper";
+            break;
 
-            // case DP_AZK_HOPPER_UPL:
-            //     DispenserName = "Azkoyen Hopper U+";
-            //     break;
+        case DP_AZK_HOPPER_U:
+            return "Azkoyen Hopper U";
+            break;
 
-            // case DP_CASHLESS_HUB:
-            //     DispenserName = "Cashless Hub";
-            //     break;
+        case DP_AZK_HOPPER_UPL:
+            return "Azkoyen Hopper U+";
+            break;
 
-            // case DP_CC_CASSETTE:
-            //     DispenserName = "Bill to Bill Cassette";
-            //     break;
+        case DP_CASHLESS_HUB:
+            return "Cashless Hub";
+            break;
 
-            // case DP_CDM_4000:
-            //     DispenserName = "MFS CDM 4000 Cassette";
-            //     break;
+        case DP_CC_CASSETTE:
+            return "Bill to Bill Cassette";
+            break;
 
-            // case DP_CLS_HOPPER:
-            //     DispenserName = "CLS Hopper";
-            //     break;
+        case DP_CDM_4000:
+            return "MFS CDM 4000 Cassette";
+            break;
 
-            // case DP_CX25_TUBE:
-            //     DispenserName = "Telequip CX25 Hopper";
-            //     break;
+        case DP_CLS_HOPPER:
+            return "CLS Hopper";
+            break;
 
-            // case DP_EBDS_ROLL:
-            //     DispenserName = "EBDS Recycler Roll";
-            //     break;
+        case DP_CX25_TUBE:
+            return "Telequip CX25 Hopper";
+            break;
 
-            // case DP_FUJITSU_F400:
-            //     DispenserName = "Fujitsu F4000";
-            //     break;
+        case DP_EBDS_ROLL:
+            return "EBDS Recycler Roll";
+            break;
 
-            // case DP_FUJITSU_F53:
-            //     DispenserName = "Fujitsu F53";
-            //     break;
+        case DP_FUJITSU_F400:
+            return "Fujitsu F4000";
+            break;
 
-            // case DP_FUJITSU_F56:
-            //     DispenserName = "Fujitsu F56";
-            //     break;
+        case DP_FUJITSU_F53:
+            return "Fujitsu F53";
+            break;
 
-            // case DP_ID003_BOX:
-            //     DispenserName = "ID003 Recycler Note Box";
-            //     break;
+        case DP_FUJITSU_F56:
+            return "Fujitsu F56";
+            break;
 
-            // case DP_INNOV_NV11_RC:
-            //     DispenserName = "NV11 Note Recycler";
-            //     break;
+        case DP_ID003_BOX:
+            return "ID003 Recycler Note Box";
+            break;
 
-            // case DP_INNOV_NV200_NOTE:
-            //     DispenserName = "NV200 Denomination";
-            //     break;
+        case DP_INNOV_NV11_RC:
+            return "NV11 Note Recycler";
+            break;
 
-            // case DP_JCM_VEGA_RC:
-            //     DispenserName = "JCM Vega Note";
-            //     break;
+        case DP_INNOV_NV200_NOTE:
+            return "NV200 Denomination";
+            break;
 
-            // case DP_MCL_BCR_HOPPER:
-            //     DispenserName = "MCL BCR Hopper";
-            //     break;
+        case DP_JCM_VEGA_RC:
+            return "JCM Vega Note";
+            break;
 
-            // case DP_MCL_CR100_HOPPER:
-            //     DispenserName = "MCL CR10x Hopper";
-            //     break;
+        case DP_MCL_BCR_HOPPER:
+            return "MCL BCR Hopper";
+            break;
 
-            // case DP_MCL_NR2_HOPPER:
-            //     DispenserName = "MCL NR2 Hopper";
-            //     break;
+        case DP_MCL_CR100_HOPPER:
+            return "MCL CR10x Hopper";
+            break;
 
-            // case DP_CC_GHOST_HOPPER:
-            //     DispenserName = "Ghost (Coin count only)";
-            //     break;
+        case DP_MCL_NR2_HOPPER:
+            return "MCL NR2 Hopper";
+            break;
 
-            // case DP_MCL_SCH2:
-            //     DispenserName = "MCL Serial Compact Hopper 2";
-            //     break;
+        case DP_CC_GHOST_HOPPER:
+            return "Ghost (Coin count only)";
+            break;
 
-            // case DP_MCL_SCH3:
-            //     DispenserName = "MCL Serial Compact Hopper 3";
-            //     break;
+        case DP_MCL_SCH2:
+            return "MCL Serial Compact Hopper 2";
+            break;
 
-            // case DP_MCL_SCH3A:
-            //     DispenserName = "MCL Combi Hopper";
-            //     break;
+        case DP_MCL_SCH3:
+            return "MCL Serial Compact Hopper 3";
+            break;
 
-            // case DP_MCL_SCH5:
-            //     DispenserName = "MCL Compact Hopper 5 (DES)";
-            //     break;
+        case DP_MCL_SCH3A:
+            return "MCL Combi Hopper";
+            break;
 
-            // case DP_MCL_SUH1:
-            //     DispenserName = "MCL Serial Universal Hopper";
-            //     break;
+        case DP_MCL_SCH5:
+            return "MCL Compact Hopper 5 (DES)";
+            break;
 
-            // case DP_MCL_SUH5:
-            //     DispenserName = "MCL Universal Hopper 5 (DES)";
-            //     break;
+        case DP_MCL_SUH1:
+            return "MCL Serial Universal Hopper";
+            break;
 
-            // case DP_MEIBNR_LOADER:
-            //     DispenserName = "Mars BNR Loader";
-            //     break;
+        case DP_MCL_SUH5:
+            return "MCL Universal Hopper 5 (DES)";
+            break;
 
-            // case DP_MEIBNR_RECYCLER:
-            //     DispenserName = "Mars BNR Recycler";
-            //     break;
+        case DP_MEIBNR_LOADER:
+            return "Mars BNR Loader";
+            break;
 
-            // case DP_MDB_LEVEL_2_TUBE:
-            //     DispenserName = "MDB Tube";
-            //     break;
+        case DP_MEIBNR_RECYCLER:
+            return "Mars BNR Recycler";
+            break;
 
-            // case DP_MDB_TYPE_3_PAYOUT:
-            //     DispenserName = "MDB Payout System";
-            //     break;
+        case DP_MDB_LEVEL_2_TUBE:
+            return "MDB Tube";
+            break;
 
-            // case DP_MERKUR_100_PAY:
-            //     DispenserName = "Merkur MD100 Roll";
-            //     break;
+        case DP_MDB_TYPE_3_PAYOUT:
+            return "MDB Payout System";
+            break;
 
-            // case DP_NRI_CURRENZA_H2:
-            //     DispenserName = "NRI Currenza H2";
-            //     break;
+        case DP_MERKUR_100_PAY:
+            return "Merkur MD100 Roll";
+            break;
 
-            // case DP_SHOPPER:
-            //     DispenserName = "Innovative SmartHopper";
-            //     break;
+        case DP_NRI_CURRENZA_H2:
+            return "NRI Currenza H2";
+            break;
 
-            // case DP_SHOPPER_TOTAL:
-            //     DispenserName = "Innovative Smart Hopper Summary";
-            //     break;
+        case DP_SHOPPER:
+            return "Innovative SmartHopper";
+            break;
 
-            // case DP_TFLEX_TUBE:
-            //     DispenserName = "Telequip TFlex Tube";
-            //     break;
+        case DP_SHOPPER_TOTAL:
+            return "Innovative Smart Hopper Summary";
+            break;
 
-            // default:
-            //     sprintf(Buffer, "Unknown code %08x", Dispenser.Unit);
-            //     DispenserName = Buffer;
-            //     break;
-            // }
+        case DP_TFLEX_TUBE:
+            return "Telequip TFlex Tube";
+            break;
 
-            // /*-- Determine coin count contents --------------------------------*/
-            // switch (Dispenser.CoinCountStatus)
-            // { case DISPENSER_COIN_NONE    : strcpy (buff, "-");                             break;
-            //   case DISPENSER_COIN_LOW     : strcpy (buff, "Low");                           break;
-            //   case DISPENSER_COIN_MID     : strcpy (buff, "Normal");                        break;
-            //   case DISPENSER_COIN_HIGH    : strcpy (buff, "High");                          break;
-            //   case DISPENSER_ACCURATE     : sprintf(buff, "%d",      Dispenser.CoinCount); break;
-            //   case DISPENSER_ACCURATE_FULL: sprintf(buff, "Full %d", Dispenser.CoinCount); break;
-            //   default                     : strcpy (buff, "Unknown");                       break;
-            // }
+        default:
+            return std::format("Unknown code {:08x}", block.Unit);
+            break;
+        }
+    }
 
-            // /*-- Determine dispenser status -----------------------------------*/
-            // switch (Dispenser.Status)
-            // { case PAY_FINISHED      : strcpy(buff, "Idle OK");         break;
-            //   case PAY_ONGOING       : strcpy(buff, "Paying");          break;
-            //   case PAY_EMPTY         : strcpy(buff, "Empty");           break;
-            //   case PAY_JAMMED        : strcpy(buff, "Jammed");          break;
-            //   case PAY_US            : strcpy(buff, "U/S");             break;
-            //   case PAY_FRAUD         : strcpy(buff, "Fraud Attempt");   break;
-            //   case PAY_FAILED_BLOCKED: strcpy(buff, "Blocked");         break;
-            //   case PAY_NO_HOPPER     : strcpy(buff, "No Dispenser");    break;
-            //   case PAY_INHIBITED     : strcpy(buff, "Inhibited");       break;
-            //   case PAY_SECURITY_FAIL : strcpy(buff, "Security Fail");   break;
-            //   case PAY_HOPPER_RESET  : strcpy(buff, "Dispenser Reset"); break;
-            //   case PAY_NOT_EXACT     : strcpy(buff, "No Exact Coin");   break;
-            //   case PAY_GHOST         : strcpy(buff, "Ghost");           break;
-            //   default                : sprintf(buff, "Error %d", Dispenser.Status);
-            // }
+    std::string_view dispenser::coinLevelToString()
+    {
 
-            // /*-- Determine if the dispenser is inhibited ----------------------*/
-            // if(Dispenser.Inhibit == 0)
-            // {
-            //     std::println("Dispenser Inhibited");
-            // }
+        /*-- Determine coin count contents --------------------------------*/
+        switch (block.CoinCountStatus)
+        {
+        case DISPENSER_COIN_NONE:
+            return "-";
+            break;
+        case DISPENSER_COIN_LOW:
+            return "Low";
+            break;
+        case DISPENSER_COIN_MID:
+            return "Normal";
+            break;
+        case DISPENSER_COIN_HIGH:
+            return "High";
+            break;
+        case DISPENSER_ACCURATE:
+            return std::format("{}", block.CoinCount);
+            break;
+        case DISPENSER_ACCURATE_FULL:
+            return std::format("Full {}", block.CoinCount);
+            break;
+        default:
+            return "Unknown";
+            break;
+        }
+    }
+
+    std::string_view dispenser::statusToString()
+    {
+        /*-- Determine dispenser status -----------------------------------*/
+        switch (block.Status)
+        {
+        case PAY_FINISHED:
+            return "Idle OK";
+            break;
+        case PAY_ONGOING:
+            return "Paying";
+            break;
+        case PAY_EMPTY:
+            return "Empty";
+            break;
+        case PAY_JAMMED:
+            return "Jammed";
+            break;
+        case PAY_US:
+            return "U/S";
+            break;
+        case PAY_FRAUD:
+            return "Fraud Attempt";
+            break;
+        case PAY_FAILED_BLOCKED:
+            return "Blocked";
+            break;
+        case PAY_NO_HOPPER:
+            return "No Dispenser";
+            break;
+        case PAY_INHIBITED:
+            return "Inhibited";
+            break;
+        case PAY_SECURITY_FAIL:
+            return "Security Fail";
+            break;
+        case PAY_HOPPER_RESET:
+            return "Dispenser Reset";
+            break;
+        case PAY_NOT_EXACT:
+            return "No Exact Coin";
+            break;
+        case PAY_GHOST:
+            return "Ghost";
+            break;
+        default:
+            return std::format("Error {}", block.Status);
+        }
+    }
+
+    bool dispenser::init()
+    {
+        size_t dispenser_no{};
+        for (; ReadDispenserDetails(dispenser_no, operator&()); ++dispenser_no)
+        {
+            std::println("index {}", dispenser_no);
+            debug_info();
+            // setInhibit(false);
+            // WriteDispenserDetails(dispenser_no, operator&());
+        }
+        return (init_ok = static_cast<bool>(dispenser_no));
+    }
+
+    void dispenser::debug_info()
+    {
+        std::println("Unit: {}", unitToString());
+        std::println("Status: {}", statusToString());
+        std::println("InterfaceNumber: {}", block.InterfaceNumber);
+        std::println("UnitAddress: {}", block.UnitAddress);
+        std::println("Coin level: {}", block.Count);
+        std::println("Coin value: {}", block.Value);
+        std::println("Coin level: {}", coinLevelToString());
+        std::println("Inhibited: {}", block.Inhibit);
+        std::println("Description: {}", block.Description); // TODO: crash
+        std::println("SerialNumber: {}", block.SerialNumber);
+    }
+
+    // /*-- Determine if the dispenser is inhibited ----------------------*/
+    // if(Dispenser.Inhibit == 0)
+    // {
+    //     std::println("Dispenser Inhibited");
+    // }
 }

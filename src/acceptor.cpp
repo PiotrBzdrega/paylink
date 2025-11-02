@@ -326,20 +326,16 @@ namespace paylink
         possessed by the interface on a single unit of money handling equipment. */
         // TODO: why first call gives status Disabled ??
         size_t acceptor_no{};
-        for (size_t i = 0; i < 2; i++)
+        for (; ReadAcceptorDetails(acceptor_no, operator&()); ++acceptor_no)
         {
-            for (; ReadAcceptorDetails(acceptor_no, operator&()); ++acceptor_no)
-            {
-                std::println("index {}", acceptor_no);
-                debug_info();
-                setInhibit(false);
-                // WriteAcceptorDetails(acceptor_no, operator&());
-            }
-            std::println("i {}", i);
+            std::println("index {}", acceptor_no);
+            debug_info();
+            setInhibit(false);
+            // WriteAcceptorDetails(acceptor_no, operator&());
         }
 
         /* 0 -> false, acceptor not detected */
-       return (init_ok = static_cast<bool>(acceptor_no));
+        return (init_ok = static_cast<bool>(acceptor_no));
     }
 
     void acceptor::update()
