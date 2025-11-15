@@ -247,7 +247,8 @@ namespace paylink
             std::println("index {}", dispenser_no);
             debug_info();
             // setInhibit(false);
-            // WriteDispenserDetails(dispenser_no, operator&());
+            block.Inhibit = 0; //uninhibited
+            WriteDispenserDetails(dispenser_no, operator&());
         }
         return (init_ok = static_cast<bool>(dispenser_no));
     }

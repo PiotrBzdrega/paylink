@@ -123,7 +123,9 @@ namespace paylink
 
             std::this_thread::sleep_for(2s);
             auto CurrentPayOut = CurrentPaid();
-            PayOut(1);
+            PayOut(100);
+            std::this_thread::sleep_for(5s);
+
 
             while (LastPayStatus() == PAY_ONGOING)
             {
@@ -132,6 +134,8 @@ namespace paylink
                     CurrentPayOut = CurrentPaid();
                     std::println("      Now paid out: {}", CurrentPayOut);
                 }
+                // std::println("sleep_for(20ms)", CurrentPayOut);
+
                 std::this_thread::sleep_for(20ms);
             }
 
