@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------------*\
  * System Includes.
 \*--------------------------------------------------------------------------*/
-#include <print>
+#include "logger.h"
 #include <csignal>
 #include <thread>
 #include <mutex>
@@ -41,7 +41,7 @@ bool return_cond{};
 
 void AbortHandler([[maybe_unused]] int signum)
 {
-    std::println("\nsignal number {}", signum);
+    mik::logger::debug("\nsignal number {}", signum);
     {
         std::lock_guard lk(m);
         return_cond = true;
@@ -51,6 +51,7 @@ void AbortHandler([[maybe_unused]] int signum)
 
 int main()
 {
+    mik::logger::setup(false, nullptr, mik::LogLevel::DEBUG);
 
     /*-- Catch signals so we exit cleanly -------------------------------*/
     std::signal(SIGHUP, AbortHandler);
@@ -95,14 +96,14 @@ int main()
     //     std::println("updates: {}", updates);
     // }
 
-    std::println("before cv.wait");
+    mik::logger::trace("before cv.wait");
 
     {
         std::unique_lock<std::mutex> lk(m);
         cv.wait(
             lk, []
             { return return_cond; });
-            std::println("cv catched");
+            mik::logger::debug("cv catched");
     }
     /*
     DataFn_SetupDispensers

@@ -1,23 +1,22 @@
 #include "acceptor.h"
-#include <print>
+#include "logger.h"
 
 namespace paylink
 {
     void acceptor::debug_info()
     {
-        std::println("Unit: {}", unitToString());
-        std::println("Status: {}", statusToString());
-        std::println("InterfaceNumber: {}", block.InterfaceNumber);
-        std::println("UnitAddress: {}", block.UnitAddress);
-        std::println("Currency: {}", block.Currency);
-        std::println("DefaultPath: {}", block.DefaultPath);
-        std::println("NoOfCoins: {}", block.NoOfCoins);
-        // std::println("Description: {}", block.Description); //TODO: crash
-        std::println("SerialNumber: {}", block.SerialNumber);
-        std::println();
+        mik::logger::debug("Unit: {}", unitToString());
+        mik::logger::debug("Status: {}", statusToString());
+        mik::logger::debug("InterfaceNumber: {}", block.InterfaceNumber);
+        mik::logger::debug("UnitAddress: {}", block.UnitAddress);
+        mik::logger::debug("Currency: {}", block.Currency);
+        mik::logger::debug("DefaultPath: {}", block.DefaultPath);
+        mik::logger::debug("NoOfCoins: {}", block.NoOfCoins);
+        // mik::logger::debug("Description: {}", block.Description); //TODO: crash
+        mik::logger::debug("SerialNumber: {}", block.SerialNumber);
     }
 
-    void acceptor::setInhibit(bool state)
+    void acceptor::setInhibit(int index, bool state)
     {
         auto is_inhibit = static_cast<bool>(block.Status & ACCEPTOR_INHIBIT);
 
@@ -29,7 +28,7 @@ namespace paylink
         {
             block.Status &= ~ACCEPTOR_INHIBIT;
         }
-        // WriteAcceptorDetails(AcceptorIndex, &Acceptor);
+        WriteAcceptorDetails(index, &block);
     }
 
     std::string_view acceptor::unitToString()
@@ -326,11 +325,11 @@ namespace paylink
         possessed by the interface on a single unit of money handling equipment. */
         // TODO: why first call gives status Disabled ??
         size_t acceptor_no{};
-        for (; ReadAcceptorDetails(acceptor_no, operator&()); ++acceptor_no)
+        for (; ReadAcceptorDetails(acceptor_no, &block /* operator&() */); ++acceptor_no)
         {
-            std::println("index {}", acceptor_no);
+            mik::logger::debug("index {}", acceptor_no);
             debug_info();
-            setInhibit(false);
+            setInhibit(acceptor_no, false);
             // WriteAcceptorDetails(acceptor_no, operator&());
         }
 

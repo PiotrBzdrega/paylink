@@ -18,7 +18,7 @@ namespace paylink
     public:
         bool init();
         void debug_info();
-        void setInhibit(bool state);
+        void setInhibit(int index, bool state);
         AcceptorBlock *operator&()
         {
             return &block;

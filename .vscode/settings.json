@@ -61,6 +61,8 @@
         "csignal": "cpp",
         "source_location": "cpp",
         "condition_variable": "cpp",
-        "mutex": "cpp"
+        "mutex": "cpp",
+        "fstream": "cpp",
+        "cinttypes": "cpp"
     }
 }

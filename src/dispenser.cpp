@@ -1,4 +1,5 @@
 #include "dispenser.h"
+#include "logger.h"
 #include <print>
 #include <format>
 
@@ -244,7 +245,7 @@ namespace paylink
         size_t dispenser_no{};
         for (; ReadDispenserDetails(dispenser_no, operator&()); ++dispenser_no)
         {
-            std::println("index {}", dispenser_no);
+            mik::logger::debug("index {}", dispenser_no);
             debug_info();
             // setInhibit(false);
             block.Inhibit = 0; //uninhibited
@@ -255,21 +256,21 @@ namespace paylink
 
     void dispenser::debug_info()
     {
-        std::println("Unit: {}", unitToString());
-        std::println("Status: {}", statusToString());
-        std::println("InterfaceNumber: {}", block.InterfaceNumber);
-        std::println("UnitAddress: {}", block.UnitAddress);
-        std::println("Coin level: {}", block.Count);
-        std::println("Coin value: {}", block.Value);
-        std::println("Coin level: {}", coinLevelToString());
-        std::println("Inhibited: {}", block.Inhibit);
-        std::println("Description: {}", block.Description); // TODO: crash
-        std::println("SerialNumber: {}", block.SerialNumber);
+        mik::logger::debug("Unit: {}", unitToString());
+        mik::logger::debug("Status: {}", statusToString());
+        mik::logger::debug("InterfaceNumber: {}", block.InterfaceNumber);
+        mik::logger::debug("UnitAddress: {}", block.UnitAddress);
+        mik::logger::debug("Coin level: {}", block.Count);
+        mik::logger::debug("Coin value: {}", block.Value);
+        mik::logger::debug("Coin level: {}", coinLevelToString());
+        mik::logger::debug("Inhibited: {}", block.Inhibit);
+        mik::logger::debug("Description: {}", block.Description); // TODO: crash
+        mik::logger::debug("SerialNumber: {}", block.SerialNumber);
     }
 
     // /*-- Determine if the dispenser is inhibited ----------------------*/
     // if(Dispenser.Inhibit == 0)
     // {
-    //     std::println("Dispenser Inhibited");
+    //     mik::logger::debug("Dispenser Inhibited");
     // }
 }

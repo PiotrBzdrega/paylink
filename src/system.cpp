@@ -1,7 +1,7 @@
 #include "system.h"
 #include "utils.h"
 #include "ImheiEvent.h"
-#include <print>
+#include "logger.h"
 #include <chrono>
 
 using namespace std::chrono_literals;
@@ -118,7 +118,7 @@ namespace paylink
             //                               { this->serverHandler(stoken, network_config); });
             coin_dispenser.init();
             worker_thread = std::jthread([this](std::stop_token stoken)
-                                         { this->get_events(stoken); });
+                                         { this->update_data(stoken, 1s); });
             // worker_thread = std::jthread(&system::get_events,this); //TODO: does not work why, token should be pass automatically; ask on so ??
 
             std::this_thread::sleep_for(2s);
@@ -126,29 +126,33 @@ namespace paylink
             PayOut(100);
             std::this_thread::sleep_for(5s);
 
-
             while (LastPayStatus() == PAY_ONGOING)
             {
                 if (CurrentPayOut != CurrentPaid())
                 {
                     CurrentPayOut = CurrentPaid();
-                    std::println("      Now paid out: {}", CurrentPayOut);
+                    mik::logger::debug("      Now paid out: {}", CurrentPayOut);
                 }
-                // std::println("sleep_for(20ms)", CurrentPayOut);
+                // mik::logger::debug("sleep_for(20ms)", CurrentPayOut);
 
                 std::this_thread::sleep_for(20ms);
             }
 
             if (LastPayStatus() != PAY_FINISHED)
             {
-                std::println("Error {} when paying coins", LastPayStatus());
-                std::println("        Total value paid out: {}", CurrentPaid());
+                mik::logger::error("Error {} when paying coins", LastPayStatus());
+                mik::logger::error("        Total value paid out: {}", CurrentPaid());
             }
             else
             {
-                std::println("coins paid out, Value {}", CurrentPaid());
+                mik::logger::debug("coins paid out, Value {}", CurrentPaid());
             }
         }
+    }
+
+    void system::set_banknote_callback(BanknoteCallback func)
+    {
+        banknote_callback = func;
     }
 
     bool system::init()
@@ -164,13 +168,13 @@ namespace paylink
             EnableInterface to establish a starting point before any coins or notes are read
         */
         int LastCurrencyValue = CurrentValue();
-        std::println("Initial currency accepted = {} PLN", LastCurrencyValue / 100);
+        mik::logger::debug("Initial currency accepted = {} PLN", LastCurrencyValue / 100);
 
         /*-- Determine if there has been an error ---------------------------*/
         auto err_msg = IMHEIConsistencyError(STANDARD_COIN_TIME, STANDARD_NOTE_TIME);
         if (err_msg && *err_msg)
         {
-            std::println("[ERROR] {}", err_msg);
+            mik::logger::error("[ERROR] {}", err_msg);
             return false;
         }
 
@@ -184,22 +188,22 @@ namespace paylink
         {
             /*-- Determine total amount paid out --------------------------------*/
             auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0);
-            std::println("Amout paid: {}", amount_paid);
+            mik::logger::debug("Amout paid: {}", amount_paid);
         }
 
         {
             auto platform_type = utils::PlatformType();
-            std::println("Platform type: [{}] {}", platform_type.first, platform_type.second);
+            mik::logger::debug("Platform type: [{}] {}", platform_type.first, platform_type.second);
         }
 
         {
             int serial_number = SerialNumber();
-            std::println("Serial number: {}", serial_number);
+            mik::logger::debug("Serial number: {}", serial_number);
         }
 
         {
             auto lay_pay = utils::LastPayoutStatus();
-            std::println("Last pay status: [{}] {}", lay_pay.first, lay_pay.second);
+            mik::logger::debug("Last pay status: [{}] {}", lay_pay.first, lay_pay.second);
             /*
             TODO: Check PayOut example
             Following a call to PayOut, the programmer should poll this to
@@ -212,34 +216,54 @@ namespace paylink
             uint32_t version;
             version = FirmwareVersion(&compile_date[0], &compile_time[0]);
             uint8_t *version_ptr = (uint8_t *)&version;
-            std::println("Firmware version: {}.{}.{}.{}", version_ptr[3], version_ptr[2], version_ptr[1], version_ptr[0]);
+            mik::logger::debug("Firmware version: {}.{}.{}.{}", version_ptr[3], version_ptr[2], version_ptr[1], version_ptr[0]);
         }
 
         {
             auto driver_status = utils::USBDriverStatus();
-            std::println("Driver status: [{}] {}", driver_status.first, driver_status.second);
+            mik::logger::debug("Driver status: [{}] {}", driver_status.first, driver_status.second);
         }
 
         {
             bool switch7_state = SwitchOpens(7) == SwitchCloses(7);
             bool switch6_state = SwitchOpens(6) == SwitchCloses(6);
-            std::println("Switch 6 state: {}", switch6_state == true ? "open" : "closed");
-            std::println("Switch 7 state: {}", switch7_state == true ? "open" : "closed");
+            mik::logger::debug("Switch 6 state: {}", switch6_state == true ? "open" : "closed");
+            mik::logger::debug("Switch 7 state: {}", switch7_state == true ? "open" : "closed");
         }
 
         {
             auto status = utils::DESStatus();
-            std::println("DESStatus [{}] {}", status.first, status.second);
+            mik::logger::debug("DESStatus [{}] {}", status.first, status.second);
         }
 
         return true;
     }
 
-    void system::get_events(std::stop_token stop_token)
+    void system::update_data(std::stop_token stop_token, std::chrono::seconds interval)
     {
         EventDetailBlock event_details;
         while (!stop_token.stop_requested())
         {
+            if (auto amount_read = (static_cast<double>(CurrentValue()) / 100.0))
+            {
+                /*-- Determine if this value has changed --------------------------*/
+                if (amount_read != TotalAmountRead)
+                {
+                    TotalAmountRead = amount_read;
+                    amount_read = TotalAmountRead - StartTotalAmountRead;
+                    if (banknote_callback)
+                    {
+                        banknote_callback(TotalAmountRead,amount_read);
+                    }
+                }
+            }
+
+            /*-- Determine total amount paid out --------------------------------*/
+            if (auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0))
+            {
+                ;
+            }
+
             auto event = NextEvent(&event_details);
             if (event != IMHEI_NULL)
             {
@@ -248,20 +272,20 @@ namespace paylink
                 {
                     if (event_details.DispenserEvent == 0)
                     {
-                        std::println("Event: {}, Raw Code: {:2X}, Acc: {:d}", text, event_details.RawEvent, event_details.Index);
+                        mik::logger::debug("Event: {}, Raw Code: {:2X}, Acc: {:d}", text, event_details.RawEvent, event_details.Index);
                     }
                     else
                     {
-                        std::println("Event: {}, Raw Code: {:2X}, Disp: {:d}", text, event_details.RawEvent, event_details.Index);
+                        mik::logger::debug("Event: {}, Raw Code: {:2X}, Disp: {:d}", text, event_details.RawEvent, event_details.Index);
                     }
                 }
                 else
                 {
-                    std::println("Event: {}, ", text);
+                    mik::logger::debug("Event: {}, ", text);
                 }
             }
-            std::println("sleep_for(2s)");
-            std::this_thread::sleep_for(2s);
+            mik::logger::trace("sleep_for(2s)");
+            std::this_thread::sleep_for(interval);
         }
     }
 
@@ -269,14 +293,14 @@ namespace paylink
     {
         if (worker_thread.joinable())
         {
-            std::println("worker_thread.join()");
+            mik::logger::trace("worker_thread.join()");
             worker_thread.request_stop();
             worker_thread.join();
         }
         /* The DisableInterface call is used to prevent users from
         entering any more coins or notes. */
         DisableInterface();
-        std::println("DisableInterface");
+        mik::logger::trace("DisableInterface");
     }
 
 }
