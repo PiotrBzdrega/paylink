@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # Enforce strict compliance
 set(CMAKE_CXX_EXTENSIONS OFF)        # Disable compiler-specific extensions
 
+# Configure the version header file
+configure_file(version.h.in "${CMAKE_SOURCE_DIR}/include/version.h")
+
 find_path(AES_LIB_INCLUDE Aesimhei.h REQUIRED)
 
 find_library(AES_LIB NAMES aes_access REQUIRED VERSION 1.2.3)
