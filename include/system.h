@@ -2,10 +2,14 @@
 #include <thread>
 #include "acceptor.h"
 #include "dispenser.h"
+#include "pn532.h"
 // TODO should composite acceptor, dispenser, paylink, stmf4
 namespace paylink
 {
     typedef void (*BanknoteCallback)(double overall_val, double banknote_val);
+    typedef void (*ErrorEventCallback)(const char* msg);
+    typedef void (*CardDetectionCallback)(const char* uid); //consider struct with more info
+    typedef void (*SignalChangeCallback)(bool* view, int v_size, int* signals, int s_size);
     class system
     {
     private:
@@ -14,6 +18,7 @@ namespace paylink
         std::jthread worker_thread;
         acceptor note_acceptor;
         dispenser coin_dispenser;
+
         BanknoteCallback banknote_callback{nullptr};
         double TotalAmountRead{};
         double StartTotalAmountRead{};
@@ -23,7 +28,6 @@ namespace paylink
         void set_banknote_callback(BanknoteCallback func);
         ~system();
     };
-
 }
 
 /*
