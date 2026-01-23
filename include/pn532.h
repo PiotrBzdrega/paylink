@@ -1,33 +1,33 @@
+#pragma once
 
 #include <thread>
 #include <nfc/nfc.h>
 #include <nfc/nfc-types.h>
+#include "BS_thread_pool.hpp"
 
 namespace nfc
 {
-    enum class poll_type : uint8_t
+    extern "C"
     {
-        SUCCESS = 0,
-        TIMEOUT = -6,
-        ERROR = -1
-    };
-
-
-    // Function pointer type for the callback (C-compatible)
-    typedef void (*callback)(const char *card_info, int status);
+        typedef void (*CardDetectionCallback)(const char *uid);
+        /*
+         TODO: consider struct with more info
+            timeout happend or error
+        */
+    }
 
     class pn532
     {
     private:
         nfc_device *pnd{};
         nfc_context *context{};
-        void poll_task(std::stop_token stop_token, callback cb, int timeout_sec);
-
+        void poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec);
+        BS::thread_pool<>& pool;
         std::jthread poll_thread;
 
     public:
-        pn532(/* args */);
-        int poll(callback cb, int timeout_sec);
+        pn532(BS::thread_pool<>& pool_);
+        int poll(CardDetectionCallback cb, int timeout_sec);
         ~pn532();
     };
 

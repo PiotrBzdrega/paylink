@@ -109,7 +109,7 @@ namespace
 
 namespace paylink
 {
-    system::system()
+    system::system() : nfc_reader(pool)
     {
         if (init())
         {

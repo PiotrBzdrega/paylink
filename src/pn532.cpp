@@ -1,6 +1,7 @@
 #include "pn532.h"
 #include "logger.h"
 #include "version.h"
+#include <functional>
 
 namespace nfc
 {
@@ -14,8 +15,9 @@ namespace nfc
         return str;
     }
 
-    void pn532::poll_task(std::stop_token stop_token, callback cb, int timeout_sec)
+    void pn532::poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec)
     {
+        //TODO: integrate timeout_sec
         while (stop_token.stop_requested() == false)
         {
             pnd = nfc_open(context, nullptr);
@@ -66,18 +68,21 @@ namespace nfc
                     }
                     nfc_perror(pnd, "nfc_initiator_target_is_present");
                     mik::logger::debug("done.\n");
-                    cb(target_info.data(), 0);
+
+                    pool.detach_task([cb, target_info]()
+                                     { cb(target_info.data()); });
                 }
                 else
                 {
                     mik::logger::debug("No target found.\n");
-                    cb("", -1);
+                    pool.detach_task([cb]()
+                                     { cb(""); });
                 }
             }
         }
     }
 
-    pn532::pn532()
+    pn532::pn532(BS::thread_pool<> &pool_) : pool(pool_)
     {
 
         // Display libnfc version
@@ -93,11 +98,12 @@ namespace nfc
         }
     }
 
-    int pn532::poll(callback cb, int timeout_sec)
+    int pn532::poll(CardDetectionCallback cb, int timeout_sec)
     {
         if (poll_thread.joinable()) // check if previous thread ended
         {
-            poll_thread = std::jthread(&pn532::poll_task, this, cb, timeout_sec);
+            /* jthread implicitly forward stop token to function, bind_front solves it */
+            poll_thread = std::jthread(std::bind_front(&pn532::poll_task, this), cb, timeout_sec);
             mik::logger::debug("Polling thread started");
             return 0;
         }

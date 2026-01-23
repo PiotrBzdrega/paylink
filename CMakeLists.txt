@@ -38,6 +38,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     rt
     aes_access
     stdc++
+    nfc
 )
 
 # Set compiler options for this target only
