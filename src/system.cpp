@@ -322,6 +322,11 @@ namespace paylink
         return CurrentValue();
     }
 
+    void system::nfc_poll_card(nfc::CardDetectionCallback cb, int timeout_sec)
+    {
+        nfc_reader.poll(cb, timeout_sec);
+    }
+
     system::~system()
     {
         if (worker_thread.joinable())

@@ -85,16 +85,27 @@ int main()
     std::signal(SIGPWR, AbortHandler);
     std::signal(SIGSYS, AbortHandler);
 
-
     paylink::system sys;
     // TODO: IS_NOTE_ACCEPTOR(Unit),
-
-
 
     // {
     //     auto updates = CurrentUpdates();
     //     std::println("updates: {}", updates);
     // }
+
+    sys.nfc_poll_card(
+        [](const char *uid)
+        {
+            if (uid && *uid)
+            {
+                mik::logger::info("Card detected with UID: {}\n", uid);
+            }
+            else
+            {
+                mik::logger::info("No card detected\n");
+            }
+        },
+        0);
 
     sys.dispense_coins(100);
 
@@ -105,7 +116,7 @@ int main()
         cv.wait(
             lk, []
             { return return_cond; });
-            mik::logger::debug("cv catched");
+        mik::logger::debug("cv catched");
     }
     /*
     DataFn_SetupDispensers

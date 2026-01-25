@@ -42,6 +42,7 @@ namespace paylink
         std::string version();
         uint32_t level_of_coins();
         uint32_t current_credit();
+        void nfc_poll_card(nfc::CardDetectionCallback cb, int timeout_sec);
         ~system();
     };
 }
