@@ -9,6 +9,7 @@ namespace paylink
     class acceptor
     {
     private:
+    //TODO: acceptor number must be stored
         AcceptorBlock block;
         std::string_view unitToString();
         std::string_view statusToString();

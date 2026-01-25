@@ -240,18 +240,31 @@ namespace paylink
         }
     }
 
-    bool dispenser::init()
+    bool dispenser::updateBlock()
     {
         size_t dispenser_no{};
         for (; ReadDispenserDetails(dispenser_no, operator&()); ++dispenser_no)
         {
             mik::logger::debug("index {}", dispenser_no);
             debug_info();
+        }
+        // TODO: check how to handle update
+        return false;
+    }
+
+    bool dispenser::setup()
+    {
+        //TODO: store index of dispenser and use it later for setInhibit etc
+        size_t dispenser_no{};
+        for (; ReadDispenserDetails(dispenser_no, operator&()); ++dispenser_no)
+        {
+            mik::logger::debug("index {}", dispenser_no);
+            debug_info();
             // setInhibit(false);
-            block.Inhibit = 0; //uninhibited
+            block.Inhibit = 0; // uninhibited
             WriteDispenserDetails(dispenser_no, operator&());
         }
-        return (init_ok = static_cast<bool>(dispenser_no));
+        return (dispenser_no > 0);
     }
 
     void dispenser::debug_info()
@@ -260,8 +273,8 @@ namespace paylink
         mik::logger::debug("Status: {}", statusToString());
         mik::logger::debug("InterfaceNumber: {}", block.InterfaceNumber);
         mik::logger::debug("UnitAddress: {}", block.UnitAddress);
-        mik::logger::debug("Coin level: {}", block.Count);
-        mik::logger::debug("Coin value: {}", block.Value);
+        mik::logger::debug("Number dispensed according to the hopper records: {}", block.Count);
+        mik::logger::debug("The value of the coins in this dispenser: {}", block.Value);
         mik::logger::debug("Coin level: {}", coinLevelToString());
         mik::logger::debug("Inhibited: {}", block.Inhibit);
         mik::logger::debug("Description: {}", block.Description); // TODO: crash

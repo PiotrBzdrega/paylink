@@ -1,0 +1,5 @@
+// the configured cmake options and settings for project
+#define VERSION_MAJOR @paylink_app_VERSION_MAJOR@
+#define VERSION_MINOR @paylink_app_VERSION_MINOR@
+#define VERSION_PATCH @paylink_app_VERSION_PATCH@
+#define PROJECT_NAME "@PROJECT_NAME@"
