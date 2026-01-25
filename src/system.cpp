@@ -2,7 +2,9 @@
 #include "utils.h"
 #include "ImheiEvent.h"
 #include "logger.h"
+#include "version.h"
 #include <chrono>
+#include <functional>
 
 using namespace std::chrono_literals;
 
@@ -114,39 +116,14 @@ namespace paylink
         if (init())
         {
             note_acceptor.init();
-            // server_thr = std::jthread([this, &network_config](std::stop_token stoken)
-            //                               { this->serverHandler(stoken, network_config); });
-            coin_dispenser.init();
-            worker_thread = std::jthread([this](std::stop_token stoken)
-                                         { this->update_data(stoken, 1s); });
-            // worker_thread = std::jthread(&system::get_events,this); //TODO: does not work why, token should be pass automatically; ask on so ??
 
-            std::this_thread::sleep_for(2s);
-            auto CurrentPayOut = CurrentPaid();
-            PayOut(100);
-            std::this_thread::sleep_for(5s);
-
-            while (LastPayStatus() == PAY_ONGOING)
+            if (coin_dispenser.setup() == false)
             {
-                if (CurrentPayOut != CurrentPaid())
-                {
-                    CurrentPayOut = CurrentPaid();
-                    mik::logger::debug("      Now paid out: {}", CurrentPayOut);
-                }
-                // mik::logger::debug("sleep_for(20ms)", CurrentPayOut);
-
-                std::this_thread::sleep_for(20ms);
+                // TODO: how to handle paylink DisableInterface if exception thrown
+                throw std::runtime_error("Dispenser setup failed");
             }
 
-            if (LastPayStatus() != PAY_FINISHED)
-            {
-                mik::logger::error("Error {} when paying coins", LastPayStatus());
-                mik::logger::error("        Total value paid out: {}", CurrentPaid());
-            }
-            else
-            {
-                mik::logger::debug("coins paid out, Value {}", CurrentPaid());
-            }
+            worker_thread = std::jthread(std::bind_front(&system::update_data, this), 500ms);
         }
     }
 
@@ -167,8 +144,12 @@ namespace paylink
             This value should be read following the call to OpenMHE and before the call to
             EnableInterface to establish a starting point before any coins or notes are read
         */
-        int LastCurrencyValue = CurrentValue();
-        mik::logger::debug("Initial currency accepted = {} PLN", LastCurrencyValue / 100);
+        StartTotalAmountRead = TotalAmountRead = CurrentValue();
+        mik::logger::debug("Initial currency accepted = {} PLN", StartTotalAmountRead);
+
+        // StartTotalAmountPaid = TotalAmountPaid = CurrentPaid();
+        auto StartTotalAmountPaid = CurrentPaid();
+        mik::logger::debug("Initial currency paid out = {} PLN", StartTotalAmountPaid);
 
         /*-- Determine if there has been an error ---------------------------*/
         auto err_msg = IMHEIConsistencyError(STANDARD_COIN_TIME, STANDARD_NOTE_TIME);
@@ -239,12 +220,12 @@ namespace paylink
         return true;
     }
 
-    void system::update_data(std::stop_token stop_token, std::chrono::seconds interval)
+    void system::update_data(std::stop_token stop_token, std::chrono::milliseconds interval)
     {
         EventDetailBlock event_details;
         while (!stop_token.stop_requested())
         {
-            if (auto amount_read = (static_cast<double>(CurrentValue()) / 100.0))
+            if (uint32_t amount_read = CurrentValue())
             {
                 /*-- Determine if this value has changed --------------------------*/
                 if (amount_read != TotalAmountRead)
@@ -253,16 +234,19 @@ namespace paylink
                     amount_read = TotalAmountRead - StartTotalAmountRead;
                     if (banknote_callback)
                     {
-                        banknote_callback(TotalAmountRead,amount_read);
+                        pool.detach_task([this,amount_read]
+                                         {
+                                             banknote_callback(TotalAmountRead, amount_read);
+                                         });
                     }
                 }
             }
 
-            /*-- Determine total amount paid out --------------------------------*/
-            if (auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0))
-            {
-                ;
-            }
+            // /*-- Determine total amount paid out --------------------------------*/
+            // if (auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0))
+            // {
+            //     ;
+            // }
 
             auto event = NextEvent(&event_details);
             if (event != IMHEI_NULL)
@@ -287,6 +271,55 @@ namespace paylink
             mik::logger::trace("sleep_for(2s)");
             std::this_thread::sleep_for(interval);
         }
+    }
+
+    int system::dispense_coins(uint32_t amount)
+    {
+        //TODO: avoid concurrent calls
+        auto primary_paid = CurrentPaid();
+        auto primary_dispensed_coins = coin_dispenser.getDispensedCoins();
+        PayOut(amount);
+
+        while (LastPayStatus() == PAY_ONGOING)
+        {
+            // if (CurrentPayOut != CurrentPaid())
+            // {
+            //     CurrentPayOut = CurrentPaid();
+            //     mik::logger::debug("      Now paid out: {}", CurrentPayOut);
+            // }
+            // // mik::logger::debug("sleep_for(20ms)", CurrentPayOut);
+
+            std::this_thread::sleep_for(500ms);
+        }
+
+        if (LastPayStatus() != PAY_FINISHED)
+        {
+            mik::logger::error("Error {} when paying coins", LastPayStatus());
+            mik::logger::error("        Total value paid out: {}", CurrentPaid());
+            return -1;
+        }
+        else
+        {
+            auto dispensed_coins = coin_dispenser.getDispensedCoins() - primary_dispensed_coins;
+            auto paid_out = CurrentPaid() - primary_paid;
+            mik::logger::debug("coins paid out, Value {} : Coins {}", paid_out, dispensed_coins);
+            return dispensed_coins;
+        }
+    }
+
+    std::string system::version()
+    {
+        return std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+    }
+
+    uint32_t system::level_of_coins()
+    {
+        return coin_dispenser.getLevelOfCoins();
+    }
+
+    uint32_t system::current_credit()
+    {
+        return CurrentValue();
     }
 
     system::~system()

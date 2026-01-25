@@ -96,6 +96,8 @@ int main()
     //     std::println("updates: {}", updates);
     // }
 
+    sys.dispense_coins(100);
+
     mik::logger::trace("before cv.wait");
 
     {

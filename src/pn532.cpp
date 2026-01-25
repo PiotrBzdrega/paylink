@@ -68,7 +68,8 @@ namespace nfc
                     }
                     nfc_perror(pnd, "nfc_initiator_target_is_present");
                     mik::logger::debug("done.\n");
-
+                    //TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
+                    // so make sure so is it
                     pool.detach_task([cb, target_info]()
                                      { cb(target_info.data()); });
                 }

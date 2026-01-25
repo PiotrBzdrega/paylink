@@ -7,26 +7,41 @@
 // TODO should composite acceptor, dispenser, paylink, stmf4, pn542
 namespace paylink
 {
-    typedef void (*BanknoteCallback)(double overall_val, double banknote_val);
-    typedef void (*ErrorEventCallback)(const char* msg);
-    typedef void (*SignalChangeCallback)(bool* view, int v_size, int* signals, int s_size);
+
+    extern "C"
+    {
+        typedef void (*BanknoteCallback)(double overall_val, double banknote_val);
+        typedef void (*ErrorEventCallback)(const char *msg);
+        typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
+    }
+
     class system
     {
     private:
         bool init();
-        void update_data(std::stop_token stop_token, std::chrono::seconds interval);
+        void update_data(std::stop_token stop_token, std::chrono::milliseconds interval);
         std::jthread worker_thread;
         acceptor note_acceptor;
         dispenser coin_dispenser;
         BS::thread_pool<> pool{4};
         nfc::pn532 nfc_reader;
         BanknoteCallback banknote_callback{nullptr};
-        double TotalAmountRead{};
-        double StartTotalAmountRead{};
+        uint32_t TotalAmountRead{};
+        uint32_t StartTotalAmountRead{};
+        // uint32_t TotalAmountPaid{};
+        // uint32_t StartTotalAmountPaid{};
+
 
     public:
         system(/* args */);
+        /* ASYNC */
         void set_banknote_callback(BanknoteCallback func);
+
+        /* SYNC */
+        int dispense_coins(uint32_t amount);
+        std::string version();
+        uint32_t level_of_coins();
+        uint32_t current_credit();
         ~system();
     };
 }
