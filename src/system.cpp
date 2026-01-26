@@ -115,13 +115,13 @@ namespace paylink
     {
         if (init())
         {
-            note_acceptor.init();
+            // note_acceptor.init();
 
-            if (coin_dispenser.setup() == false)
-            {
-                // TODO: how to handle paylink DisableInterface if exception thrown
-                throw std::runtime_error("Dispenser setup failed");
-            }
+            // if (coin_dispenser.setup() == false)
+            // {
+            //     // TODO: how to handle paylink DisableInterface if exception thrown
+            //     throw std::runtime_error("Dispenser setup failed");
+            // }
 
             worker_thread = std::jthread(std::bind_front(&system::update_data, this), 500ms);
         }
@@ -282,11 +282,11 @@ namespace paylink
 
         while (LastPayStatus() == PAY_ONGOING)
         {
-            // if (CurrentPayOut != CurrentPaid())
-            // {
-            //     CurrentPayOut = CurrentPaid();
-            //     mik::logger::debug("      Now paid out: {}", CurrentPayOut);
-            // }
+            if (primary_paid != CurrentPaid())
+            {
+                primary_paid = CurrentPaid();
+                mik::logger::debug("      Now paid out: {}", primary_paid);
+            }
             // // mik::logger::debug("sleep_for(20ms)", CurrentPayOut);
 
             std::this_thread::sleep_for(500ms);

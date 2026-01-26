@@ -43,8 +43,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # Set compiler options for this target only
 target_compile_options(${PROJECT_NAME} PRIVATE
-    -O2
-    -g0
+    # -O2
+    # -g0
     -Wall
     -Wextra
     -Wpedantic

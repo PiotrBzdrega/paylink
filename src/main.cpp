@@ -51,7 +51,7 @@ void AbortHandler([[maybe_unused]] int signum)
 
 int main()
 {
-    mik::logger::setup(false, nullptr, mik::LogLevel::DEBUG);
+    mik::logger::setup(true, nullptr, mik::LogLevel::DEBUG);
 
     /*-- Catch signals so we exit cleanly -------------------------------*/
     std::signal(SIGHUP, AbortHandler);
@@ -107,7 +107,7 @@ int main()
         },
         0);
 
-    sys.dispense_coins(100);
+    // sys.dispense_coins(100);
 
     mik::logger::trace("before cv.wait");
 
