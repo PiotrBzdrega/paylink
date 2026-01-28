@@ -8,6 +8,7 @@ namespace uc
         std::jthread irq_thread;
     public:
         stm(/* args */);
+        int wait_for_irq();
         ~stm();
     };
     
