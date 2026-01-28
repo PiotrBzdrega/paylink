@@ -147,9 +147,9 @@ namespace mik
             log(mik::LogLevel::ERROR, fmt, std::forward<Args>(args)...);
         }
 
-        static void setup(bool standard_output = true, std::ofstream *stream = nullptr, LogLevel lvl = level)
+        static void setup(bool std_output = true, std::ofstream *stream = nullptr, LogLevel lvl = level)
         {
-            set_stdout(standard_output);
+            set_stdout(std_output);
             set_stream(stream);
             set_level(lvl);
         }
@@ -163,10 +163,10 @@ namespace mik
             std::scoped_lock lock{s_mutex};
             outstream = stream;
         }
-        static void set_stdout(bool standard_output)
+        static void set_stdout(bool std_output)
         {
             std::scoped_lock lock{s_mutex};
-            standard_output = standard_output;
+            standard_output = std_output;
         }
     };
 }

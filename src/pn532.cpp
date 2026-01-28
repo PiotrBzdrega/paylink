@@ -17,7 +17,7 @@ namespace nfc
 
     void pn532::poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec)
     {
-        //TODO: integrate timeout_sec
+        // TODO: integrate timeout_sec
         while (stop_token.stop_requested() == false)
         {
             pnd = nfc_open(context, nullptr);
@@ -68,8 +68,8 @@ namespace nfc
                     }
                     nfc_perror(pnd, "nfc_initiator_target_is_present");
                     mik::logger::debug("done.\n");
-                    //TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
-                    // so make sure so is it
+                    // TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
+                    //  so make sure so is it
                     pool.detach_task([cb, target_info]()
                                      { cb(target_info.data()); });
                 }
@@ -101,17 +101,17 @@ namespace nfc
 
     int pn532::poll(CardDetectionCallback cb, int timeout_sec)
     {
-        if (poll_thread.joinable()) // check if previous thread ended
+                if (poll_thread.joinable()) // check if previous thread ended
+        {
+            mik::logger::debug("Cannot start polling, previous thread still running");
+            return -1; // previous thread still running
+        }
+        else
         {
             /* jthread implicitly forward stop token to function, bind_front solves it */
             poll_thread = std::jthread(std::bind_front(&pn532::poll_task, this), cb, timeout_sec);
             mik::logger::debug("Polling thread started");
             return 0;
-        }
-        else
-        {
-            mik::logger::debug("Cannot start polling, previous thread still running");
-            return -1; // previous thread still running
         }
     }
 
