@@ -60,7 +60,7 @@ namespace com
         return fd; // success
     }
 
-    serial::serial(std::string_view path_) : path(path_)
+    serial::serial(std::string_view path_, readAuxFunc read_validator_) : path(path_), read_validator(read_validator_)
     {
         open();
     }
@@ -75,29 +75,51 @@ namespace com
     {
         return write(fd, msg.data(), msg.size());
     }
-    int serial::operator>>(std::string &container) const
+    int serial::operator>>(std::string &container)
     {
+        int read_bytes;
+        int msg_bytes{};
 
-        // Read bytes. The behaviour of read() (e.g. does it block?,
-        // how long does it block for?) depends on the configuration
-        // settings above, specifically VMIN and VTIME
-        int num_bytes = read(fd, buf.data(), buf.size());
-
-        container.assign(reinterpret_cast<const char*>(buf.data()), num_bytes);
-
-        // n is the number of bytes read. n may be 0 if no bytes were received, and can also be -1 to signal an error.
-        if (num_bytes < 0)
+        while (true)
         {
-            mik::logger::error("Error reading: {}", strerror(errno));
-            return -1;
+            // Read bytes. The behaviour of read() (e.g. does it block?,
+            // how long does it block for?) depends on the configuration
+            // settings above, specifically VMIN and VTIME
+            read_bytes = read(fd, buf.data() + msg_bytes, buf.size() - msg_bytes);
+
+            // n is the number of bytes read. n may be 0 if no bytes were received, and can also be -1 to signal an error.
+            if (read_bytes < 0)
+            {
+                mik::logger::error("Error reading: {}", strerror(errno));
+                return -1;
+            }
+            else if (read_bytes == 0)
+            {
+                // mik::logger::debug("Read timeout occurred (no data received)");
+                return 0;
+            }
+            else
+            {
+                // mik::logger::debug("Read {} bytes", num_bytes);
+                msg_bytes += read_bytes;
+                if ((read_validator && read_validator(buf.data(), msg_bytes)) || !read_validator)
+                {
+                    container.assign(reinterpret_cast<const char *>(buf.data()), msg_bytes);
+                    mik::logger::debug("Read {} bytes. Received message: {}", msg_bytes, container);
+                    return msg_bytes;
+                }
+                else
+                {
+                    continue;
+                }
+                break;
+            }
         }
 
-        
         // Here we assume we received ASCII data, but you might be sending raw bytes (in that case, don't try and
         // print it to the screen like this!)
-        mik::logger::debug("Read {} bytes. Received message: {}", num_bytes, container);
 
-        return num_bytes;
+        return msg_bytes;
     }
     std::string serial::list_ports()
     {
