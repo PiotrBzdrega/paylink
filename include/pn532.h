@@ -21,9 +21,9 @@ namespace nfc
     private:
         nfc_device *pnd{};
         nfc_context *context{};
-        void poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec);
         BS::thread_pool<>& pool;
         std::jthread poll_thread;
+        void poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec);
 
     public:
         pn532(BS::thread_pool<>& pool_);

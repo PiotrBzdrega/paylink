@@ -3,6 +3,7 @@
 #include "acceptor.h"
 #include "dispenser.h"
 #include "pn532.h"
+#include "stm.h"
 #include "BS_thread_pool.hpp"
 // TODO should composite acceptor, dispenser, paylink, stmf4, pn542
 namespace paylink
@@ -18,16 +19,17 @@ namespace paylink
     class system
     {
     private:
-        bool init();
-        void update_data(std::stop_token stop_token, std::chrono::milliseconds interval);
         std::jthread worker_thread;
         acceptor note_acceptor;
         dispenser coin_dispenser;
         BS::thread_pool<> pool{4};
         nfc::pn532 nfc_reader;
+        uc::stm stm32;
         BanknoteCallback banknote_callback{nullptr};
         uint32_t TotalAmountRead{};
         uint32_t StartTotalAmountRead{};
+        bool init();
+        void update_data(std::stop_token stop_token, std::chrono::milliseconds interval);
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
 
