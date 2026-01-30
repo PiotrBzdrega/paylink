@@ -1,9 +1,10 @@
-// Linux headers
+#include <thread>
+#include <cstring> // strerror()
+#include <chrono>
 #include <fcntl.h>   // Contains file controls like O_RDWR
 #include <errno.h>   // Error integer and strerror() function
 #include <termios.h> // Contains POSIX terminal control definitions
 #include <unistd.h>  // write(), read(), close()
-#include <cstring>   // strerror()
 #include "logger.h"
 #include "serial.h"
 
@@ -73,10 +74,12 @@ namespace com
     }
     int serial::operator<<(std::string_view msg) const
     {
+        // TODO: add loop sometimes msg is longer than allocated buffer length
         return write(fd, msg.data(), msg.size());
     }
     int serial::operator>>(std::string &container)
     {
+        // TODO: Think through wiser mechanism to pass message to caller...; maybe create std::string here and move to caller or wait for some array and read directly to array
         int read_bytes;
         int msg_bytes{};
 
@@ -95,7 +98,8 @@ namespace com
             }
             else if (read_bytes == 0)
             {
-                // mik::logger::debug("Read timeout occurred (no data received)");
+                // TODO: is it correct message ??
+                mik::logger::debug("Read timeout occurred (no data received)");
                 return 0;
             }
             else
@@ -124,5 +128,27 @@ namespace com
     std::string serial::list_ports()
     {
         return "https://github.com/wjwwood/serial/blob/main/src/impl/list_ports/list_ports_linux.cc";
+    }
+    int serial::reconnect()
+    {
+        if (fd != -1)
+        {
+            close(fd);
+            fd = -1;
+        }
+
+        int result;
+        uint8_t delay{1};
+        do
+        {
+            /* increase delay each time till max of uint8_t */
+            delay |= delay << 1;
+            std::this_thread::sleep_for(std::chrono::seconds(delay));
+
+            result = open();
+
+        } while (result <= 0);
+
+        return 0;
     }
 }

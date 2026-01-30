@@ -22,5 +22,6 @@ namespace com
         int operator<<(std::string_view msg) const;
         int operator>>(std::string &container);
         static std::string list_ports();
+        int reconnect();
     };
 }

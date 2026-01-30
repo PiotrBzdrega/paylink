@@ -35,6 +35,7 @@ namespace paylink
 
 
     public:
+    //TODO: think through if we need some configuration file
         system(/* args */);
         /* ASYNC */
         void set_banknote_callback(BanknoteCallback func);
