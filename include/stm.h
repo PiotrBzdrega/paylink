@@ -19,11 +19,7 @@ namespace uc
         std::jthread sync_thr;
         BS::thread_pool<> &pool;
         com::thread_safe_queue<std::pair<std::string, std::optional<std::promise<std::string>>>> request_queue;
-        struct shared
-        {
-            std::mutex mtx;
-            std::string data; // TODO: consider better datatype for shared data, to not clean and create again
-        };
+        std::string last_states;
         void sync_worker(std::stop_token stop_token);
         void irq_worker(std::stop_token stop_token);
         std::string create_request(std::string_view request);

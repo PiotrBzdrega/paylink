@@ -29,8 +29,6 @@ namespace uc
             /* Wait for new request */
             request_queue.pop(request);
 
-            need recognize request type to react for it correctly. Do i really need to have it ??
-
             /* Send message to serial port  */
             auto write_bytes = sync_serial << request.first;
 
@@ -46,12 +44,43 @@ namespace uc
             /* Read response from serial port */
             auto read_bytes = sync_serial >> response;
 
+            /* error response */
             if (read_bytes <= 0)
             {
                 /* Direct calls contains promise that they are waiting for */
                 if (request.second.has_value())
                 {
                     request.second.value().set_value("");
+                }
+                sync_serial.reconnect();
+            }
+            else
+            {
+                bool signals_changed{};
+
+                /* Specific handling for Signals state */
+                if (request.first == GET_SIGNALS_REQ)
+                {
+                    /* States change detection */
+                    if (response != last_states)
+                    {
+                        /* Update current states data */
+                        last_states = response;
+                        signals_changed = true;
+                    }
+                }
+
+                /* Direct calls contains promise that they are waiting for */
+                if (request.second.has_value())
+                {
+                    /* Pass value to the waiting instance */
+                    request.second.value().set_value(response);
+                }
+                /* It is not direct call, but singnals states has change */
+                else
+                if (signals_changed)
+                {
+                    pool.submit_task()
                 }
             }
         }

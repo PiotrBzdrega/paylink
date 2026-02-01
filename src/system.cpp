@@ -127,7 +127,7 @@ namespace paylink
         }
     }
 
-    void system::set_banknote_callback(BanknoteCallback func)
+    void system::set_new_banknote_callback(BanknoteCallback func)
     {
         banknote_callback = func;
     }

@@ -13,7 +13,9 @@ namespace paylink
     {
         typedef void (*BanknoteCallback)(double overall_val, double banknote_val);
         typedef void (*ErrorEventCallback)(const char *msg);
-        typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
+        // typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
+        //TODO: why do i have there signals ??
+        typedef void (*SignalChangeCallback)(bool *view, int v_size);
     }
 
     class system
@@ -38,8 +40,10 @@ namespace paylink
     //TODO: think through if we need some configuration file
         system(/* args */);
         /* ASYNC */
-        void set_banknote_callback(BanknoteCallback func);
-
+        void set_new_banknote_callback(BanknoteCallback func);
+        void set_buttons_state_change_callback(SignalChangeCallback func);
+        void set_sensors_state_change_callback(SignalChangeCallback func);
+        add all functions here
         /* SYNC */
         int dispense_coins(uint32_t amount);
         std::string version();
