@@ -77,8 +77,7 @@ namespace uc
                     request.second.value().set_value(response);
                 }
                 /* It is not direct call, but singnals states has change */
-                else
-                if (signals_changed)
+                else if (signals_changed)
                 {
                     pool.submit_task()
                 }
@@ -119,5 +118,8 @@ namespace uc
     std::string stm::test_req()
     {
         return std::string(TEST_REQ);
+    }
+    void stm::set_sensors_state_change_callback(cb::SignalChangeCallback func) {
+        signal_change_callback = func;
     };
 }

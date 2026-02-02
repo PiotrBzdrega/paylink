@@ -4,18 +4,10 @@
 #include <nfc/nfc.h>
 #include <nfc/nfc-types.h>
 #include "BS_thread_pool.hpp"
+#include "callbacks.h"
 
 namespace nfc
 {
-    extern "C"
-    {
-        typedef void (*CardDetectionCallback)(const char *uid);
-        /*
-         TODO: consider struct with more info
-            timeout happend or error
-        */
-    }
-
     class pn532
     {
     private:
@@ -23,11 +15,11 @@ namespace nfc
         nfc_context *context{};
         BS::thread_pool<>& pool;
         std::jthread poll_thread;
-        void poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec);
+        void poll_task(std::stop_token stop_token, cb::CardDetectionCallback cb);
 
     public:
         pn532(BS::thread_pool<>& pool_);
-        int poll(CardDetectionCallback cb, int timeout_sec);
+        int poll(cb::CardDetectionCallback cb);
         ~pn532();
     };
 

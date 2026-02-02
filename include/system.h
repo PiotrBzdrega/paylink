@@ -5,17 +5,15 @@
 #include "pn532.h"
 #include "stm.h"
 #include "BS_thread_pool.hpp"
+#include "callbacks.h"
 // TODO should composite acceptor, dispenser, paylink, stmf4, pn542
 namespace paylink
 {
 
     extern "C"
     {
-        typedef void (*BanknoteCallback)(double overall_val, double banknote_val);
-        typedef void (*ErrorEventCallback)(const char *msg);
-        // typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
-        //TODO: why do i have there signals ??
-        typedef void (*SignalChangeCallback)(bool *view, int v_size);
+
+
     }
 
     class system
@@ -27,7 +25,7 @@ namespace paylink
         BS::thread_pool<> pool{4};
         nfc::pn532 nfc_reader;
         uc::stm stm32;
-        BanknoteCallback banknote_callback{nullptr};
+        cb::BanknoteCallback banknote_callback{nullptr};
         uint32_t TotalAmountRead{};
         uint32_t StartTotalAmountRead{};
         bool init();
@@ -40,16 +38,22 @@ namespace paylink
     //TODO: think through if we need some configuration file
         system(/* args */);
         /* ASYNC */
-        void set_new_banknote_callback(BanknoteCallback func);
-        void set_buttons_state_change_callback(SignalChangeCallback func);
-        void set_sensors_state_change_callback(SignalChangeCallback func);
-        add all functions here
+        void set_new_banknote_callback(cb::BanknoteCallback func);
+        int set_card_detected_callback(cb::CardDetectionCallback func);
+        void set_buttons_state_change_callback(cb::SignalChangeCallback func);
+        void set_sensors_state_change_callback(cb::SignalChangeCallback func);
+        void set_error_event_callback(cb::ErrorEventCallback func);
+        set callbacks and pass requests to endpoint classes
         /* SYNC */
         int dispense_coins(uint32_t amount);
+        std::string get_buttons_state();
+        std::string get_sensors_state();
+        std::string set_led(int number, bool on);
+        std::string set_motor(bool on);
         std::string version();
         uint32_t level_of_coins();
         uint32_t current_credit();
-        void nfc_poll_card(nfc::CardDetectionCallback cb, int timeout_sec);
+        void nfc_poll_card(cb::CardDetectionCallback cb, int timeout_sec);
         ~system();
     };
 }

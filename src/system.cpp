@@ -127,9 +127,19 @@ namespace paylink
         }
     }
 
-    void system::set_new_banknote_callback(BanknoteCallback func)
+    void system::set_new_banknote_callback(cb::BanknoteCallback func)
     {
         banknote_callback = func;
+    }
+
+    int system::set_card_detected_callback(cb::CardDetectionCallback func)
+    {
+        return nfc_reader.poll(func);
+    }
+
+    void system::set_sensors_state_change_callback(cb::SignalChangeCallback func)
+    {
+        stm32.set_sensors_state_change_callback(func);
     }
 
     bool system::init()
@@ -234,10 +244,8 @@ namespace paylink
                     amount_read = TotalAmountRead - StartTotalAmountRead;
                     if (banknote_callback)
                     {
-                        pool.detach_task([this,amount_read]
-                                         {
-                                             banknote_callback(TotalAmountRead, amount_read);
-                                         });
+                        pool.detach_task([this, amount_read]
+                                         { banknote_callback(TotalAmountRead, amount_read); });
                     }
                 }
             }
@@ -275,7 +283,7 @@ namespace paylink
 
     int system::dispense_coins(uint32_t amount)
     {
-        //TODO: avoid concurrent calls
+        // TODO: avoid concurrent calls
         auto primary_paid = CurrentPaid();
         auto primary_dispensed_coins = coin_dispenser.getDispensedCoins();
         PayOut(amount);
@@ -307,6 +315,11 @@ namespace paylink
         }
     }
 
+    std::string system::get_sensors_state()
+    {
+        return std::string();
+    }
+
     std::string system::version()
     {
         return std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
@@ -322,7 +335,7 @@ namespace paylink
         return CurrentValue();
     }
 
-    void system::nfc_poll_card(nfc::CardDetectionCallback cb, int timeout_sec)
+    void system::nfc_poll_card(cb::CardDetectionCallback cb, int timeout_sec)
     {
         nfc_reader.poll(cb, timeout_sec);
     }

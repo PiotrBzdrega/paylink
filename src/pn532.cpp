@@ -15,7 +15,7 @@ namespace nfc
         return str;
     }
 
-    void pn532::poll_task(std::stop_token stop_token, CardDetectionCallback cb, int timeout_sec)
+    void pn532::poll_task(std::stop_token stop_token, cb::CardDetectionCallback cb)
     {
         // TODO: integrate timeout_sec
         while (stop_token.stop_requested() == false)
@@ -46,7 +46,7 @@ namespace nfc
 
                 nfc_target nt;
                 int res = 0;
-
+                // TODO: run pool endlessly and create abort command if token has been called
                 mik::logger::debug("NFC device will poll during {} ms ({} pollings of {} ms for {} modulations)\n", (unsigned long)uiPollNr * szModulations * uiPeriod * 150, uiPollNr, (unsigned long)uiPeriod * 150, szModulations);
                 if ((res = nfc_initiator_poll_target(pnd, nmModulations, szModulations, uiPollNr, uiPeriod, &nt)) < 0)
                 {
@@ -61,6 +61,10 @@ namespace nfc
                 {
                     auto verbose{true};
                     auto target_info = print_nfc_target(&nt, verbose);
+                    // TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
+                    //  so make sure so is it
+                    pool.detach_task([cb, target_info]()
+                                     { cb(target_info.data()); });
                     printf("Waiting for card removing...");
                     fflush(stdout);
                     while (0 == nfc_initiator_target_is_present(pnd, NULL))
@@ -68,10 +72,6 @@ namespace nfc
                     }
                     nfc_perror(pnd, "nfc_initiator_target_is_present");
                     mik::logger::debug("done.\n");
-                    // TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
-                    //  so make sure so is it
-                    pool.detach_task([cb, target_info]()
-                                     { cb(target_info.data()); });
                 }
                 else
                 {
@@ -85,7 +85,6 @@ namespace nfc
 
     pn532::pn532(BS::thread_pool<> &pool_) : pool(pool_)
     {
-
         // Display libnfc version
         const char *acLibnfcVersion = nfc_version();
 
@@ -99,9 +98,9 @@ namespace nfc
         }
     }
 
-    int pn532::poll(CardDetectionCallback cb, int timeout_sec)
+    int pn532::poll(cb::CardDetectionCallback cb)
     {
-                if (poll_thread.joinable()) // check if previous thread ended
+        if (poll_thread.joinable()) // check if previous thread ended
         {
             mik::logger::debug("Cannot start polling, previous thread still running");
             return -1; // previous thread still running
@@ -109,7 +108,7 @@ namespace nfc
         else
         {
             /* jthread implicitly forward stop token to function, bind_front solves it */
-            poll_thread = std::jthread(std::bind_front(&pn532::poll_task, this), cb, timeout_sec);
+            poll_thread = std::jthread(std::bind_front(&pn532::poll_task, this), cb);
             mik::logger::debug("Polling thread started");
             return 0;
         }
