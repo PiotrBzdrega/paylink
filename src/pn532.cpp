@@ -32,9 +32,10 @@ namespace nfc
 
             while (stop_token.stop_requested() == false && pnd != nullptr)
             {
-                const uint8_t uiPollNr = 20;
+                /* Endless polling */
+                const uint8_t uiPollNr = 0xFF; // 20;
                 const uint8_t uiPeriod = 2;
-                const nfc_modulation nmModulations[6] = {
+                const nfc_modulation pnmModulations[6] = {
                     {.nmt = NMT_ISO14443A, .nbr = NBR_106},
                     {.nmt = NMT_ISO14443B, .nbr = NBR_106},
                     {.nmt = NMT_FELICA, .nbr = NBR_212},
@@ -44,11 +45,24 @@ namespace nfc
                 };
                 const size_t szModulations = 6;
 
-                nfc_target nt;
+                nfc_target pnt;
                 int res = 0;
-                // TODO: run pool endlessly and create abort command if token has been called
+                // TODO: create abort command if token has been called
                 mik::logger::debug("NFC device will poll during {} ms ({} pollings of {} ms for {} modulations)\n", (unsigned long)uiPollNr * szModulations * uiPeriod * 150, uiPollNr, (unsigned long)uiPeriod * 150, szModulations);
-                if ((res = nfc_initiator_poll_target(pnd, nmModulations, szModulations, uiPollNr, uiPeriod, &nt)) < 0)
+                /** @ingroup initiator
+                 * @brief Polling for NFC targets
+                 * @return Returns polled targets count, otherwise returns libnfc's error code (negative value).
+                 *
+                 * @param pnd \a nfc_device struct pointer that represent currently used device
+                 * @param pnmModulations desired modulations
+                 * @param szModulations size of \a pnmModulations
+                 * @param uiPollNr specifies the number of polling (0x01 – 0xFE: 1 up to 254 polling, 0xFF: Endless polling)
+                 * @note one polling is a polling for each desired target type
+                 * @param uiPeriod indicates the polling period in units of 150 ms (0x01 – 0x0F: 150ms – 2.25s)
+                 * @note e.g. if uiPeriod=10, it will poll each desired target type during 1.5s
+                 * @param[out] pnt pointer on \a nfc_target (over)writable struct
+                 */
+                if ((res = nfc_initiator_poll_target(pnd, pnmModulations, szModulations, uiPollNr, uiPeriod, &pnt)) < 0)
                 {
                     nfc_perror(pnd, "nfc_initiator_poll_target");
                     nfc_close(pnd);
@@ -60,7 +74,7 @@ namespace nfc
                 if (res > 0)
                 {
                     auto verbose{true};
-                    auto target_info = print_nfc_target(&nt, verbose);
+                    auto target_info = print_nfc_target(&pnt, verbose);
                     // TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
                     //  so make sure so is it
                     pool.detach_task([cb, target_info]()

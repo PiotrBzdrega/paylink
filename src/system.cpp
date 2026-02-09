@@ -5,6 +5,7 @@
 #include "version.h"
 #include <chrono>
 #include <functional>
+#include <ranges>
 
 using namespace std::chrono_literals;
 
@@ -137,6 +138,11 @@ namespace paylink
         return nfc_reader.poll(func);
     }
 
+    void system::set_buttons_state_change_callback(cb::ButtonsChangeCallback func)
+    {
+        buttons_callback = func;
+    }
+
     void system::set_sensors_state_change_callback(cb::SignalChangeCallback func)
     {
         stm32.set_sensors_state_change_callback(func);
@@ -169,18 +175,23 @@ namespace paylink
             return false;
         }
 
+        /* Initialize inputs */
+        {
+            for (int i : std::views::iota(0, INPUTS_LEN))
+            {
+                if (SwitchOpens(i) == SwitchCloses(i))
+                {
+                    sensors_state |= (1u << i);
+                }
+            }
+        }
+
         /* The EnableInterface call is used to allow users to enter coins
         or notes into the system. This would be called when a game is
         initialised and ready to accept credit. */
         EnableInterface();
 
         // CheckOperation() two times must be called, check how does it work
-
-        {
-            /*-- Determine total amount paid out --------------------------------*/
-            auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0);
-            mik::logger::debug("Amout paid: {}", amount_paid);
-        }
 
         {
             auto platform_type = utils::PlatformType();
@@ -216,13 +227,6 @@ namespace paylink
         }
 
         {
-            bool switch7_state = SwitchOpens(7) == SwitchCloses(7);
-            bool switch6_state = SwitchOpens(6) == SwitchCloses(6);
-            mik::logger::debug("Switch 6 state: {}", switch6_state == true ? "open" : "closed");
-            mik::logger::debug("Switch 7 state: {}", switch7_state == true ? "open" : "closed");
-        }
-
-        {
             auto status = utils::DESStatus();
             mik::logger::debug("DESStatus [{}] {}", status.first, status.second);
         }
@@ -235,50 +239,73 @@ namespace paylink
         EventDetailBlock event_details;
         while (!stop_token.stop_requested())
         {
-            if (uint32_t amount_read = CurrentValue())
+            /* Check if new banknote appears */
+            if (auto new_banknote_read = CurrentValue() - StartTotalAmountRead)
             {
-                /*-- Determine if this value has changed --------------------------*/
-                if (amount_read != TotalAmountRead)
+                /* Add to sum */
+                TotalAmountRead += new_banknote_read;
+
+                /* Callback available ? */
+                if (banknote_callback)
                 {
-                    TotalAmountRead = amount_read;
-                    amount_read = TotalAmountRead - StartTotalAmountRead;
-                    if (banknote_callback)
-                    {
-                        pool.detach_task([this, amount_read]
-                                         { banknote_callback(TotalAmountRead, amount_read); });
-                    }
+                    pool.detach_task([this, new_banknote_read]
+                                     { banknote_callback(TotalAmountRead, new_banknote_read); });
                 }
             }
+        }
 
-            // /*-- Determine total amount paid out --------------------------------*/
-            // if (auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0))
-            // {
-            //     ;
-            // }
+        // /*-- Determine total amount paid out --------------------------------*/
+        // if (auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0))
+        // {
+        //     ;
+        // }
 
-            auto event = NextEvent(&event_details);
-            if (event != IMHEI_NULL)
+        /* Check inputs */
+        {
+        }
+
+        auto event = NextEvent(&event_details);
+        if (event != IMHEI_NULL)
+        {
+            auto text = decode_event(event);
+            if (event >= COIN_DISPENSER_EVENT)
             {
-                auto text = decode_event(event);
-                if (event >= COIN_DISPENSER_EVENT)
+                if (event_details.DispenserEvent == 0)
                 {
-                    if (event_details.DispenserEvent == 0)
-                    {
-                        mik::logger::debug("Event: {}, Raw Code: {:2X}, Acc: {:d}", text, event_details.RawEvent, event_details.Index);
-                    }
-                    else
-                    {
-                        mik::logger::debug("Event: {}, Raw Code: {:2X}, Disp: {:d}", text, event_details.RawEvent, event_details.Index);
-                    }
+                    mik::logger::debug("Event: {}, Raw Code: {:2X}, Acc: {:d}", text, event_details.RawEvent, event_details.Index);
                 }
                 else
                 {
-                    mik::logger::debug("Event: {}, ", text);
+                    mik::logger::debug("Event: {}, Raw Code: {:2X}, Disp: {:d}", text, event_details.RawEvent, event_details.Index);
                 }
             }
-            mik::logger::trace("sleep_for(2s)");
-            std::this_thread::sleep_for(interval);
+            else
+            {
+                mik::logger::debug("Event: {}, ", text);
+            }
         }
+        mik::logger::trace("sleep_for {}", interval);
+        std::this_thread::sleep_for(interval);
+    }
+
+    uint16_t system::get_buttons_state(bool detect_change)
+    {
+        uint16_t new_sensors_state{};
+        for (int i : std::views::iota(0, INPUTS_LEN))
+        {
+            if (SwitchOpens(i) == SwitchCloses(i))
+            {
+                new_sensors_state |= (1u << i);
+            }
+        }
+
+        /* Change recognized */
+        if (new_sensors_state ^ sensors_state)
+        {
+            sensors_state = new_sensors_state;
+            // TODO: callback
+        }
+        return sensors_state;
     }
 
     int system::dispense_coins(uint32_t amount)
@@ -315,6 +342,10 @@ namespace paylink
         }
     }
 
+    uint16_t system::get_buttons_state()
+    {
+    }
+
     std::string system::get_sensors_state()
     {
         return std::string();
@@ -335,11 +366,6 @@ namespace paylink
         return CurrentValue();
     }
 
-    void system::nfc_poll_card(cb::CardDetectionCallback cb, int timeout_sec)
-    {
-        nfc_reader.poll(cb, timeout_sec);
-    }
-
     system::~system()
     {
         if (worker_thread.joinable())
@@ -353,5 +379,4 @@ namespace paylink
         DisableInterface();
         mik::logger::trace("DisableInterface");
     }
-
 }

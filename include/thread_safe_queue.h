@@ -6,7 +6,7 @@
 
 namespace com
 {
-    template<typename T>
+    template <typename T>
     class thread_safe_queue
     {
         /***
@@ -14,16 +14,17 @@ namespace com
          */
     private:
         mutable std::mutex mtx; /*Since locking a mutex is a mutating operation, the mutex object must be marked mutable to change its state even in const functions*/
-        //TODO: limit amount of events, *and rise Notification if buffer overflow
+        // TODO: limit amount of events, *and rise Notification if buffer overflow
         std::deque<T> que;
         std::condition_variable cv;
+
     public:
         thread_safe_queue() {};
         ~thread_safe_queue() {};
         void push_back(const T &new_value)
         {
             /* lock function scope */
-            std::lock_guard<std::mutex> lck(mtx); 
+            std::lock_guard<std::mutex> lck(mtx);
 
             /* push new value at the end of que if exclusive access available */
             que.push_back(new_value);
@@ -34,7 +35,7 @@ namespace com
         void push_front(const T &new_value)
         {
             /* lock function scope */
-            std::lock_guard<std::mutex> lck(mtx); 
+            std::lock_guard<std::mutex> lck(mtx);
 
             /* push new value at the end of que if exclusive access available */
             que.push_front(new_value);
@@ -42,13 +43,29 @@ namespace com
             /* let know other thread that smth new appears*/
             cv.notify_one();
         }
+        template <typename... Args>
+        void emplace_front(Args &&...args)
+        {
+            std::lock_guard<std::mutex> lck(mtx);
+            que.emplace_front(std::forward<Args>(args)...);
+            cv.notify_one();
+        }
+        template <typename... Args>
+        void emplace_back(Args &&...args)
+        {
+            std::lock_guard<std::mutex> lck(mtx);
+            que.emplace_back(std::forward<Args>(args)...);
+            cv.notify_one();
+        }
+
         std::shared_ptr<T> pop()
-        {   
+        {
             /* lock function scope */
             std::unique_lock<std::mutex> lck(mtx);
 
             /* block till queue has new data */
-            cv.wait(lck,[this]{return !que.empty();});
+            cv.wait(lck, [this]
+                    { return !que.empty(); });
 
             /* obtain last element (added as first) from queue */
             std::shared_ptr<T> res(std::make_shared<T>(que.front()));
@@ -58,14 +75,15 @@ namespace com
 
             return res;
         }
-        template<typename F>
-        void pop_many_drop_internal(std::vector<T>& container, F&& filter_out)
-        {   
+        template <typename F>
+        void pop_many_drop_internal(std::vector<T> &container, F &&filter_out)
+        {
             /* lock function scope */
             std::unique_lock<std::mutex> lck(mtx);
 
             /* block till queue has new data */
-            cv.wait(lck,[this]{return !que.empty();});
+            cv.wait(lck, [this]
+                    { return !que.empty(); });
 
             /* Retrieve elements till queue runs out or defined amount of elements pushed */
             while (!que.empty())
@@ -74,7 +92,7 @@ namespace com
                 {
                     /* remove last element (added as first) from queue */
                     que.pop_front();
-                    continue;                    
+                    continue;
                 }
                 /* obtain last element (added as first) from queue */
                 container.push_back(std::move(que.front()));
@@ -86,15 +104,16 @@ namespace com
         /**
          * @return one position behind last element
          */
-        template<std::size_t N, typename F>
-        std::pair<bool,std::size_t> pop_many_break_on_internal(std::array<T,N>& arr, std::size_t position, F&& filter_out)
-        {   
+        template <std::size_t N, typename F>
+        std::pair<bool, std::size_t> pop_many_break_on_internal(std::array<T, N> &arr, std::size_t position, F &&filter_out)
+        {
             bool filtered_out{};
             /* lock function scope */
             std::unique_lock<std::mutex> lck(mtx);
 
             /* block till queue has new data */
-            cv.wait(lck,[this]{return !que.empty();});
+            cv.wait(lck, [this]
+                    { return !que.empty(); });
 
             auto new_position{position};
             /* Retrieve elements till queue runs out or array fully filled */
@@ -104,24 +123,25 @@ namespace com
                 {
                     /* Leave element and break */
                     filtered_out = true;
-                    break;                   
+                    break;
                 }
-                
+
                 /* obtain last element (added as first) from queue */
-                arr[new_position++]=std::move(que.front());
+                arr[new_position++] = std::move(que.front());
 
                 /* remove last element (added as first) from queue */
                 que.pop_front();
             }
-            return {filtered_out,new_position};
+            return {filtered_out, new_position};
         }
-        bool pop(T& value)
-        {   
+        bool pop(T &value)
+        {
             /* lock function scope */
             std::unique_lock<std::mutex> lck(mtx);
 
             /* block till queue has new data */
-            cv.wait(lck,[this]{return !que.empty();});
+            cv.wait(lck, [this]
+                    { return !que.empty(); });
 
             /* obtain last element (added as first) from queue */
             value = std::move(que.front());
@@ -131,13 +151,13 @@ namespace com
 
             return true;
         }
-        bool try_pop(T& value)
-        {   
+        bool try_pop(T &value)
+        {
             /* lock function scope */
-            std::lock_guard<std::mutex> lck(mtx);             
+            std::lock_guard<std::mutex> lck(mtx);
 
             /* check if data available */
-            if(que.empty())
+            if (que.empty())
             {
                 return false;
             }
@@ -150,14 +170,15 @@ namespace com
 
             return true;
         }
-        template<typename Rep, typename Period>
-        bool try_wait_pop(T& value, std::chrono::duration<Rep, Period> timeout)
-        {   
+        template <typename Rep, typename Period>
+        bool try_wait_pop(T &value, std::chrono::duration<Rep, Period> timeout)
+        {
             /* lock function scope */
             std::unique_lock<std::mutex> lck(mtx);
 
             /* block till queue has new data or timeout */
-            if(cv.wait_for(lck,timeout,[this]{return !que.empty();}) == false)
+            if (cv.wait_for(lck, timeout, [this]
+                            { return !que.empty(); }) == false)
             {
                 // timeout happened, no data available
                 return false;
@@ -170,13 +191,14 @@ namespace com
 
             return true;
         }
-        bool try_wait_until_pop(T& value, std::chrono::system_clock::time_point timeout)
-        {   
+        bool try_wait_until_pop(T &value, std::chrono::system_clock::time_point timeout)
+        {
             /* lock function scope */
             std::unique_lock<std::mutex> lck(mtx);
 
             /* block till queue has new data or timeout */
-            if(cv.wait_until(lck,timeout,[this]{return !que.empty();}) == false)
+            if (cv.wait_until(lck, timeout, [this]
+                              { return !que.empty(); }) == false)
             {
                 // timeout happened, no data available
                 return false;
@@ -197,9 +219,9 @@ namespace com
         void clear()
         {
             /* lock function scope */
-            std::lock_guard<std::mutex> lck(mtx); 
+            std::lock_guard<std::mutex> lck(mtx);
 
-            //Erases all elements from the container.
+            // Erases all elements from the container.
             que.clear();
         }
     };

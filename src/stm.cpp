@@ -33,7 +33,7 @@ namespace uc
             auto write_bytes = sync_serial << request.first;
 
             /* Number of sended bytes is the same as requested message  */
-            if (request.first.size() != write_bytes)
+            if (static_cast<int>(request.first.size()) != write_bytes)
             {
                 mik::logger::error("Number of bytes delivered to serial port {} differs from effective request message {}", write_bytes, request.first.size());
             }
@@ -52,7 +52,11 @@ namespace uc
                 {
                     request.second.value().set_value("");
                 }
-                sync_serial.reconnect();
+                /* Check if connection has been canceled on purpose */
+                if (!stop_token.stop_requested())
+                {
+                    sync_serial.reconnect();
+                }
             }
             else
             {
@@ -76,10 +80,16 @@ namespace uc
                     /* Pass value to the waiting instance */
                     request.second.value().set_value(response);
                 }
-                /* It is not direct call, but singnals states has change */
+                /* It is not direct call, but signals states has change */
                 else if (signals_changed)
                 {
-                    pool.submit_task()
+                    if (signal_change_callback)
+                    {
+                        std::array<uint8_t, 3> a{1, 2, 3};
+                        // TODO: forward real message not stub
+                        pool.detach_task([this, response, a]()
+                                         { signal_change_callback(a.data(), 3); });
+                    }
                 }
             }
         }
@@ -87,18 +97,35 @@ namespace uc
     void stm::irq_worker(std::stop_token stop_token)
     {
         com::serial irq_serial{"/dev/ttyACM0"};
-        std::string irq;
-        auto res = irq_serial >> irq;
-        if (res > 0 && irq == IRQ_MSG)
+        /* Execute loop until stop requested */
+        while (!stop_token.stop_requested())
         {
-            /* create thread safe queue*/
+            std::string irq;
+            auto res = irq_serial >> irq;
+            if (res > 0)
+            {
+                if (irq == IRQ_MSG)
+                {
+                    // TODO: consider obtain some counter from irq
+                    /* add request to thread as less critical*/
+                    request_queue.emplace_back(GET_SIGNALS_REQ, std::nullopt);
+                }
+            }
+            else
+                /* Check if connection has been canceled on purpose */
+                if (!stop_token.stop_requested())
+                { 
+                    //TODO: make sure that
+                    irq_serial.reconnect();
+                }
         }
     }
+
     std::string stm::create_request(std::string_view request)
     {
         auto prom = std::promise<std::string>{};
         auto fut = prom.get_future();
-        request_queue.push_front(std::make_pair(request.data(), prom));
+        request_queue.emplace_front(request.data(), std::make_optional(std::move(prom)));
 
         return fut.get();
     }
@@ -119,7 +146,8 @@ namespace uc
     {
         return std::string(TEST_REQ);
     }
-    void stm::set_sensors_state_change_callback(cb::SignalChangeCallback func) {
+    void stm::set_sensors_state_change_callback(cb::SignalChangeCallback func)
+    {
         signal_change_callback = func;
     };
 }

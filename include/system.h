@@ -9,13 +9,7 @@
 // TODO should composite acceptor, dispenser, paylink, stmf4, pn542
 namespace paylink
 {
-
-    extern "C"
-    {
-
-
-    }
-
+    constexpr static auto INPUTS_LEN{16};
     class system
     {
     private:
@@ -26,34 +20,36 @@ namespace paylink
         nfc::pn532 nfc_reader;
         uc::stm stm32;
         cb::BanknoteCallback banknote_callback{nullptr};
-        uint32_t TotalAmountRead{};
-        uint32_t StartTotalAmountRead{};
+        cb::ButtonsChangeCallback buttons_callback{nullptr};
+        int TotalAmountRead{};
+        int StartTotalAmountRead{};
+        uint16_t sensors_state;
         bool init();
         void update_data(std::stop_token stop_token, std::chrono::milliseconds interval);
+        uint16_t get_buttons_state(bool detect_change);
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
 
-
     public:
-    //TODO: think through if we need some configuration file
+        // TODO: think through if we need some configuration file
         system(/* args */);
         /* ASYNC */
         void set_new_banknote_callback(cb::BanknoteCallback func);
         int set_card_detected_callback(cb::CardDetectionCallback func);
-        void set_buttons_state_change_callback(cb::SignalChangeCallback func);
+        void set_buttons_state_change_callback(cb::ButtonsChangeCallback func);
         void set_sensors_state_change_callback(cb::SignalChangeCallback func);
         void set_error_event_callback(cb::ErrorEventCallback func);
-        set callbacks and pass requests to endpoint classes
+        // set callbacks and pass requests to endpoint classes
         /* SYNC */
-        int dispense_coins(uint32_t amount);
-        std::string get_buttons_state();
+        int
+        dispense_coins(uint32_t amount);
+        uint16_t get_buttons_state();
         std::string get_sensors_state();
         std::string set_led(int number, bool on);
         std::string set_motor(bool on);
         std::string version();
         uint32_t level_of_coins();
         uint32_t current_credit();
-        void nfc_poll_card(cb::CardDetectionCallback cb, int timeout_sec);
         ~system();
     };
 }

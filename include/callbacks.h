@@ -4,11 +4,12 @@ namespace cb
 {
     extern "C"
     {
-        typedef void (*BanknoteCallback)(double overall_val, double banknote_val);
+        typedef void (*BanknoteCallback)(int overall_val, int banknote_val);
         typedef void (*ErrorEventCallback)(const char *msg);
         // typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
         // TODO: why do i have there signals ??
-        typedef void (*SignalChangeCallback)(bool *view, int v_size);
+        typedef void (*SignalChangeCallback)(const uint8_t *view, int v_size);
+        typedef void (*ButtonsChangeCallback)(const uint16_t state);
         typedef void (*CardDetectionCallback)(const char *uid);
         /*
          TODO: consider struct with more info

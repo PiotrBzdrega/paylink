@@ -93,19 +93,19 @@ int main()
     //     std::println("updates: {}", updates);
     // }
 
-    sys.nfc_poll_card(
-        [](const char *uid)
-        {
-            if (uid && *uid)
-            {
-                mik::logger::info("Card detected with UID: {}\n", uid);
-            }
-            else
-            {
-                mik::logger::info("No card detected\n");
-            }
-        },
-        0);
+    // sys.nfc_poll_card(
+    //     [](const char *uid)
+    //     {
+    //         if (uid && *uid)
+    //         {
+    //             mik::logger::info("Card detected with UID: {}\n", uid);
+    //         }
+    //         else
+    //         {
+    //             mik::logger::info("No card detected\n");
+    //         }
+    //     },
+    //     0);
 
     // sys.dispense_coins(100);
 
