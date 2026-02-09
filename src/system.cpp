@@ -112,7 +112,7 @@ namespace
 
 namespace paylink
 {
-    system::system() : nfc_reader(pool), stm32(pool)
+    system::system() : nfc_reader(pool), stm32(pool), sensors(pool)
     {
         if (init())
         {
@@ -140,7 +140,7 @@ namespace paylink
 
     void system::set_buttons_state_change_callback(cb::ButtonsChangeCallback func)
     {
-        buttons_callback = func;
+        sensors.buttons_callback = func;
     }
 
     void system::set_sensors_state_change_callback(cb::SignalChangeCallback func)
@@ -181,6 +181,7 @@ namespace paylink
             {
                 if (SwitchOpens(i) == SwitchCloses(i))
                 {
+                    create initialization function in sensors_t struct
                     sensors_state |= (1u << i);
                 }
             }
@@ -288,26 +289,6 @@ namespace paylink
         std::this_thread::sleep_for(interval);
     }
 
-    uint16_t system::get_buttons_state(bool detect_change)
-    {
-        uint16_t new_sensors_state{};
-        for (int i : std::views::iota(0, INPUTS_LEN))
-        {
-            if (SwitchOpens(i) == SwitchCloses(i))
-            {
-                new_sensors_state |= (1u << i);
-            }
-        }
-
-        /* Change recognized */
-        if (new_sensors_state ^ sensors_state)
-        {
-            sensors_state = new_sensors_state;
-            // TODO: callback
-        }
-        return sensors_state;
-    }
-
     int system::dispense_coins(uint32_t amount)
     {
         // TODO: avoid concurrent calls
@@ -378,5 +359,53 @@ namespace paylink
         entering any more coins or notes. */
         DisableInterface();
         mik::logger::trace("DisableInterface");
+    }
+    uint16_t system::sensors_t::get_buttons_state(bool notify_via_callback)
+    {
+        uint16_t new_state{};
+        uint16_t open_rise{};
+        uint16_t close_rise{};
+        for (int i : std::views::iota(0, INPUTS_LEN))
+        {
+            /* OPEN */
+            auto new_open_counter = SwitchOpens(i);
+            if (open_counter[i] != new_open_counter)
+            {
+                open_rise |= (1u << i);
+                open_counter[i] = new_open_counter;
+            }
+
+            /* CLOSE */
+            auto new_close_counter = SwitchCloses(i);
+            if (close_counter[i] != new_close_counter)
+            {
+                close_rise |= (1u << i);
+                close_counter[i] = new_close_counter;
+            }
+
+            if (new_open_counter == new_close_counter)
+            {
+                new_state |= (1u << i);
+            }
+        }
+
+        /* Change recognized */
+        uint16_t state_change;
+        state_change = new_state ^ state;
+        if (state_change)
+        {
+            state = new_state;
+        }
+
+        /* Recognize if state or state edge has change */
+        if (state_change | open_rise | close_rise)
+        {
+            if (notify_via_callback && buttons_callback)
+            {
+                pool.detach_task([this, state_change, open_rise, close_rise]
+                                 { buttons_callback(state_change, open_rise, close_rise); });
+            }
+        }
+        return state;
     }
 }

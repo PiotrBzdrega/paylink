@@ -20,15 +20,30 @@ namespace paylink
         nfc::pn532 nfc_reader;
         uc::stm stm32;
         cb::BanknoteCallback banknote_callback{nullptr};
-        cb::ButtonsChangeCallback buttons_callback{nullptr};
         int TotalAmountRead{};
         int StartTotalAmountRead{};
-        uint16_t sensors_state;
+        struct sensors_t
+        {
+            explicit sensors_t(BS::thread_pool<> &pool_) : pool(pool_) {};
+            BS::thread_pool<> &pool;
+            uint16_t state;
+            std::array<int, INPUTS_LEN> open_counter;
+            std::array<int, INPUTS_LEN> close_counter;
+            cb::ButtonsChangeCallback buttons_callback{nullptr};
+            uint16_t get_buttons_state(bool notify_via_callback);
+        };
+        sensors_t sensors;
         bool init();
         void update_data(std::stop_token stop_token, std::chrono::milliseconds interval);
-        uint16_t get_buttons_state(bool detect_change);
+
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
+
+                scheduler
+                check each 100ms if task time expired
+                run it
+
+                - super loop thread for each task with an unique delay  ~~ can cause race condition (different calls will be executed simultaneusly)
 
     public:
         // TODO: think through if we need some configuration file
