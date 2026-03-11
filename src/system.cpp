@@ -116,15 +116,24 @@ namespace paylink
     {
         if (init())
         {
-            // note_acceptor.init();
+            /* Start interval functions */
+            {
+                scheduler.submit_periodic_task(
+                    [this](/* this auto& self */)
+                    { update_banknote(); },
+                    500ms);
+
+                scheduler.submit_periodic_task(
+                    [this](/* this auto& self */)
+                    { update_event(); },
+                    500ms);
+            }
 
             // if (coin_dispenser.setup() == false)
             // {
             //     // TODO: how to handle paylink DisableInterface if exception thrown
             //     throw std::runtime_error("Dispenser setup failed");
             // }
-
-            worker_thread = std::jthread(std::bind_front(&system::update_data, this), 500ms);
         }
     }
 
@@ -181,7 +190,7 @@ namespace paylink
             {
                 if (SwitchOpens(i) == SwitchCloses(i))
                 {
-                    create initialization function in sensors_t struct
+                    // TODO: create initialization function in sensors_t struct
                     sensors_state |= (1u << i);
                 }
             }
@@ -235,36 +244,26 @@ namespace paylink
         return true;
     }
 
-    void system::update_data(std::stop_token stop_token, std::chrono::milliseconds interval)
+    void system::update_banknote()
     {
-        EventDetailBlock event_details;
-        while (!stop_token.stop_requested())
+        /* Check if new banknote appears */
+        if (auto new_banknote_read = CurrentValue() - StartTotalAmountRead)
         {
-            /* Check if new banknote appears */
-            if (auto new_banknote_read = CurrentValue() - StartTotalAmountRead)
-            {
-                /* Add to sum */
-                TotalAmountRead += new_banknote_read;
+            /* Add to sum */
+            TotalAmountRead += new_banknote_read;
 
-                /* Callback available ? */
-                if (banknote_callback)
-                {
-                    pool.detach_task([this, new_banknote_read]
-                                     { banknote_callback(TotalAmountRead, new_banknote_read); });
-                }
+            /* Callback available ? */
+            if (banknote_callback)
+            {
+                pool.detach_task([this, new_banknote_read]
+                                 { banknote_callback(TotalAmountRead, new_banknote_read); });
             }
         }
+    }
 
-        // /*-- Determine total amount paid out --------------------------------*/
-        // if (auto amount_paid = (static_cast<double>(CurrentPaid()) / 100.0))
-        // {
-        //     ;
-        // }
-
-        /* Check inputs */
-        {
-        }
-
+    void system::update_event()
+    {
+        EventDetailBlock event_details;
         auto event = NextEvent(&event_details);
         if (event != IMHEI_NULL)
         {
@@ -285,8 +284,6 @@ namespace paylink
                 mik::logger::debug("Event: {}, ", text);
             }
         }
-        mik::logger::trace("sleep_for {}", interval);
-        std::this_thread::sleep_for(interval);
     }
 
     int system::dispense_coins(uint32_t amount)
@@ -323,9 +320,9 @@ namespace paylink
         }
     }
 
-    uint16_t system::get_buttons_state()
-    {
-    }
+    // uint16_t system::get_buttons_state()
+    // {
+    // }
 
     std::string system::get_sensors_state()
     {
@@ -349,12 +346,8 @@ namespace paylink
 
     system::~system()
     {
-        if (worker_thread.joinable())
-        {
-            mik::logger::trace("worker_thread.join()");
-            worker_thread.request_stop();
-            worker_thread.join();
-        }
+        // TODO: here we must be sure that scheduler does not run any task
+        scheduler.stop();
         /* The DisableInterface call is used to prevent users from
         entering any more coins or notes. */
         DisableInterface();

@@ -6,6 +6,7 @@
 #include "stm.h"
 #include "BS_thread_pool.hpp"
 #include "callbacks.h"
+#include "scheduler.h"
 // TODO should composite acceptor, dispenser, paylink, stmf4, pn542
 namespace paylink
 {
@@ -20,6 +21,7 @@ namespace paylink
         nfc::pn532 nfc_reader;
         uc::stm stm32;
         cb::BanknoteCallback banknote_callback{nullptr};
+        com::scheduler scheduler;
         int TotalAmountRead{};
         int StartTotalAmountRead{};
         struct sensors_t
@@ -34,17 +36,12 @@ namespace paylink
         };
         sensors_t sensors;
         bool init();
-        void update_data(std::stop_token stop_token, std::chrono::milliseconds interval);
+        void update_banknote();
+        void update_event();
+
 
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
-
-                scheduler
-                check each 100ms if task time expired
-                run it
-
-                - super loop thread for each task with an unique delay  ~~ can cause race condition (different calls will be executed simultaneusly)
-
     public:
         // TODO: think through if we need some configuration file
         system(/* args */);
