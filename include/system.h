@@ -35,10 +35,11 @@ namespace paylink
             uint16_t get_buttons_state(bool notify_via_callback);
         };
         sensors_t sensors;
+        std::mutex mtx_dispense_coins;
+        std::mutex mtx_set_motor;
         bool init();
         void update_banknote();
         void update_event();
-
 
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
@@ -58,10 +59,10 @@ namespace paylink
         uint16_t get_buttons_state();
         std::string get_sensors_state();
         std::string set_led(int number, bool on);
-        std::string set_motor(bool on);
+        void set_motor(bool on, uint32_t ms = 0);
         std::string version();
-        uint32_t level_of_coins();
-        uint32_t current_credit();
+        int level_of_coins();
+        int current_credit();
         ~system();
     };
 }

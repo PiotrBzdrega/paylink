@@ -118,15 +118,23 @@ namespace paylink
         {
             /* Start interval functions */
             {
+                /* BANKNOTE */
                 scheduler.submit_periodic_task(
                     [this](/* this auto& self */)
                     { update_banknote(); },
                     500ms);
 
+                /* EVENTS */
                 scheduler.submit_periodic_task(
                     [this](/* this auto& self */)
                     { update_event(); },
-                    500ms);
+                    1s);
+
+                /* BUTTONS */
+                scheduler.submit_periodic_task(
+                    [this]()
+                    { sensors.get_buttons_state(true); },
+                    100ms);
             }
 
             // if (coin_dispenser.setup() == false)
@@ -184,17 +192,8 @@ namespace paylink
             return false;
         }
 
-        /* Initialize inputs */
-        {
-            for (int i : std::views::iota(0, INPUTS_LEN))
-            {
-                if (SwitchOpens(i) == SwitchCloses(i))
-                {
-                    // TODO: create initialization function in sensors_t struct
-                    sensors_state |= (1u << i);
-                }
-            }
-        }
+        /* Initialize buttons state */
+        sensors.get_buttons_state(false);
 
         /* The EnableInterface call is used to allow users to enter coins
         or notes into the system. This would be called when a game is
@@ -288,45 +287,99 @@ namespace paylink
 
     int system::dispense_coins(uint32_t amount)
     {
-        // TODO: avoid concurrent calls
-        auto primary_paid = CurrentPaid();
-        auto primary_dispensed_coins = coin_dispenser.getDispensedCoins();
-        PayOut(amount);
+        /* This call must be exclusive to disallow concurrent calls */
+        std::lock_guard<std::mutex> lck(mtx_dispense_coins);
 
-        while (LastPayStatus() == PAY_ONGOING)
+        auto prepay_prom = std::promise<std::pair<int, int>>{};
+        auto prepay_fut = prepay_prom.get_future();
+
+        /* Payment Task */
+        scheduler.submit_task([this, amount, prom = std::move(prepay_prom)] mutable
+                              {
+            auto primary_paid = CurrentPaid();
+            auto primary_dispensed_coins = coin_dispenser.getDispensedCoins();
+            PayOut(amount);
+            prom.set_value(std::make_pair(primary_paid,primary_dispensed_coins)); });
+
+        /* Wait for pre-payment result */
+        auto [prepay_paid, prepay_dispensed_coins] = prepay_fut.get();
+
+        int postpay_paid{};
+        int postpay_dispensed_coins{};
+
+        int pay_st{};
+        do
         {
-            if (primary_paid != CurrentPaid())
-            {
-                primary_paid = CurrentPaid();
-                mik::logger::debug("      Now paid out: {}", primary_paid);
-            }
-            // // mik::logger::debug("sleep_for(20ms)", CurrentPayOut);
-
             std::this_thread::sleep_for(500ms);
-        }
+            auto postpay_prom = std::promise<int>{};
+            auto postpay_fut = postpay_prom.get_future();
+            /* Post payment Task */
+            scheduler.submit_task([this, prom = std::move(postpay_prom), &postpay_paid, &postpay_dispensed_coins]() mutable
+                                  {
+                                    auto st = LastPayStatus();
+                                    postpay_paid = CurrentPaid();
+                                    postpay_dispensed_coins = coin_dispenser.getDispensedCoins();
+                                    prom.set_value(st); });
+            /* Wait for post payment */
+            pay_st = postpay_fut.get();
+        } while (pay_st == PAY_ONGOING);
 
-        if (LastPayStatus() != PAY_FINISHED)
+        if (pay_st != PAY_FINISHED)
         {
-            mik::logger::error("Error {} when paying coins", LastPayStatus());
-            mik::logger::error("        Total value paid out: {}", CurrentPaid());
+            mik::logger::error("Error {} when paying coins", pay_st);
+            mik::logger::error("        Total value paid out: {} coins: {}", postpay_paid, postpay_dispensed_coins);
             return -1;
         }
         else
         {
-            auto dispensed_coins = coin_dispenser.getDispensedCoins() - primary_dispensed_coins;
-            auto paid_out = CurrentPaid() - primary_paid;
-            mik::logger::debug("coins paid out, Value {} : Coins {}", paid_out, dispensed_coins);
+            auto dispensed_coins = postpay_dispensed_coins - prepay_dispensed_coins;
+            auto paid_out = postpay_paid - prepay_paid;
+            mik::logger::debug("[Payment SUCCESS] Coins paid out, Value {} : Coins {}", paid_out, dispensed_coins);
             return dispensed_coins;
         }
     }
 
-    // uint16_t system::get_buttons_state()
-    // {
-    // }
+    uint16_t system::get_buttons_state()
+    {
+        auto prom = std::promise<int>{};
+        auto fut = prom.get_future();
+        /* Post payment Task */
+        scheduler.submit_task([this, prom = std::move(prom)]() mutable
+                              { prom.set_value(sensors.get_buttons_state(true)); });
+
+        return fut.get();
+    }
 
     std::string system::get_sensors_state()
     {
         return std::string();
+    }
+
+    void system::set_motor(bool on, uint32_t ms)
+    {
+
+        /* This call must be exclusive to disallow concurrent calls */
+        std::lock_guard<std::mutex> lck(mtx_set_motor);
+
+        static constexpr int MOTOR_OUTPUT{7};
+
+        /* Switch ON Motor */
+        scheduler.submit_task(
+            [this, on]()
+            {
+                on ? IndicatorOn(MOTOR_OUTPUT) : IndicatorOff(MOTOR_OUTPUT);
+            });
+
+        if (ms > 0)
+        {
+            /* Switch OFF Motor (if there is a delay specified) */
+            scheduler.submit_task(
+                [this, on]()
+                {
+                    !on ? IndicatorOn(MOTOR_OUTPUT) : IndicatorOff(MOTOR_OUTPUT);
+                },
+                std::chrono::seconds(ms / 1000));
+        }
     }
 
     std::string system::version()
@@ -334,14 +387,26 @@ namespace paylink
         return std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
     }
 
-    uint32_t system::level_of_coins()
+    int system::level_of_coins()
     {
-        return coin_dispenser.getLevelOfCoins();
+        auto prom = std::promise<int>{};
+        auto fut = prom.get_future();
+        /* Post payment Task */
+        scheduler.submit_task([this, prom = std::move(prom)]() mutable
+                              { prom.set_value(coin_dispenser.getLevelOfCoins()); });
+
+        return fut.get();
     }
 
-    uint32_t system::current_credit()
+    int system::current_credit()
     {
-        return CurrentValue();
+        auto prom = std::promise<int>{};
+        auto fut = prom.get_future();
+        /* Post payment Task */
+        scheduler.submit_task([prom = std::move(prom)]() mutable
+                              { prom.set_value(CurrentValue()); });
+
+        return fut.get();
     }
 
     system::~system()

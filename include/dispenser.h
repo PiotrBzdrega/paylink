@@ -10,11 +10,11 @@ namespace paylink
         DispenserBlock block;
         std::string_view unitToString();
         std::string_view coinLevelToString();
-        std::string_view statusToString();
         bool updateBlock();
 
     public:
         bool setup();
+        std::string_view statusToString();
         void debug_info();
         void setInhibit(bool state);
         DispenserBlock *operator&()
@@ -26,7 +26,7 @@ namespace paylink
             updateBlock();
             return block.Count;
         }
-        uint32_t getLevelOfCoins()
+        int getLevelOfCoins()
         {
             updateBlock();
             return block.Value;

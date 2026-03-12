@@ -31,9 +31,9 @@ namespace com
         bool remove_task_(std::size_t id_);
 
     public:
-        std::size_t submit_periodic_task(task_t &&t_, std::chrono::milliseconds interval_, uint32_t repeat_ = 0);
+        std::size_t submit_periodic_task(task_t &&t_, std::chrono::milliseconds interval_, uint32_t repeat_ = 0, std::chrono::seconds delay_ = std::chrono::seconds(0));
         bool remove_task(std::size_t id_);
-        std::size_t submit_task(task_t &&t_);
+        std::size_t submit_task(task_t &&t_, std::chrono::seconds delay_ = std::chrono::seconds(0));
         void stop();
         scheduler();
         ~scheduler();

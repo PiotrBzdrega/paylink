@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10.0)
-project(paylink_app VERSION 0.1.0 LANGUAGES C CXX)
+project(paylink_app VERSION 0.2.0 LANGUAGES C CXX)
 
 # Set C++23 standard for all targets
 set(CMAKE_CXX_STANDARD 23)

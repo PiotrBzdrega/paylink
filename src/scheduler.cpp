@@ -101,14 +101,14 @@ namespace com
         return false;
     }
 
-    std::size_t scheduler::submit_periodic_task(task_t &&t_, std::chrono::milliseconds interval_, uint32_t repeat_)
+    std::size_t scheduler::submit_periodic_task(task_t &&t_, std::chrono::milliseconds interval_, uint32_t repeat_, std::chrono::seconds delay_)
     {
         repeat_t r = repeat_ > 0 ? repeat_t{repeat_ - 1} : std::nullopt;
         auto id = std::hash<std::string_view>{}(std::to_string(counter++));
         {
             // std::println("new task {}", id);
             std::lock_guard<std::mutex> lck(mtx);
-            tasks.emplace_back(std::move(t_), interval_, id, r);
+            tasks.emplace_back(std::move(t_), interval_, id, r, delay_);
         }
         cv.notify_one();
         return id;
@@ -126,9 +126,9 @@ namespace com
         return res;
     }
 
-    std::size_t scheduler::submit_task(task_t &&t_)
+    std::size_t scheduler::submit_task(task_t &&t_, std::chrono::seconds delay_)
     {
-        return submit_periodic_task(std::move(t_), std::chrono::milliseconds(0), 1);
+        return submit_periodic_task(std::move(t_), std::chrono::milliseconds(0), 1, delay_);
     }
 
     void scheduler::stop()
