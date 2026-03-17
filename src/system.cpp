@@ -352,7 +352,42 @@ namespace paylink
 
     std::string system::get_sensors_state()
     {
+        // TODO: reference to stm32
         return std::string();
+    }
+
+    void system::set_led(int number, bool on, uint32_t interval_ms)
+    {
+        if (led_pending_task_map.contains(number))
+        {
+            auto task_no = led_pending_task_map[number];
+            /* Remove pending task if already exists */
+            scheduler.remove_task(task_no);
+
+            /* Remove task number from map */
+            led_pending_task_map.erase(number);
+        }
+
+        if (interval_ms > 0)
+        {
+            /*Blink */
+            led_pending_task_map[number] = scheduler.submit_periodic_task(
+                [number, on]() mutable
+                {
+                    on ? IndicatorOn(number) : IndicatorOff(number);
+                    on = !on;
+                },
+                std::chrono::milliseconds(interval_ms));
+        }
+        else
+        {
+            /* Switch ON LED */
+            scheduler.submit_task(
+                [number, on]()
+                {
+                    on ? IndicatorOn(number) : IndicatorOff(number);
+                });
+        }
     }
 
     void system::set_motor(bool on, uint32_t ms)
@@ -361,7 +396,7 @@ namespace paylink
         /* This call must be exclusive to disallow concurrent calls */
         std::lock_guard<std::mutex> lck(mtx_set_motor);
 
-        static constexpr int MOTOR_OUTPUT{7};
+        static constexpr int MOTOR_OUTPUT{0};
 
         /* Switch ON Motor */
         scheduler.submit_task(

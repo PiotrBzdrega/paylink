@@ -22,6 +22,7 @@ namespace paylink
         uc::stm stm32;
         cb::BanknoteCallback banknote_callback{nullptr};
         com::scheduler scheduler;
+        std::unordered_map<int,std::size_t> led_pending_task_map;
         int TotalAmountRead{};
         int StartTotalAmountRead{};
         struct sensors_t
@@ -44,7 +45,11 @@ namespace paylink
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
     public:
-        // TODO: think through if we need some configuration file
+    
+        // watch abi talk
+        // fill calbacks for all calls
+        // test nfc reader phisically
+        // TODO: think through if we need some configuration file for input mapings ??
         system(/* args */);
         /* ASYNC */
         void set_new_banknote_callback(cb::BanknoteCallback func);
@@ -58,7 +63,7 @@ namespace paylink
         dispense_coins(uint32_t amount);
         uint16_t get_buttons_state();
         std::string get_sensors_state();
-        std::string set_led(int number, bool on);
+        void set_led(int number, bool on, uint32_t interval_ms);
         void set_motor(bool on, uint32_t ms = 0);
         std::string version();
         int level_of_coins();
