@@ -111,6 +111,8 @@ int main()
 
     mik::logger::trace("before cv.wait");
 
+    // std::this_thread::sleep_for(std::chrono::seconds(20));
+
     {
         std::unique_lock<std::mutex> lk(m);
         cv.wait(

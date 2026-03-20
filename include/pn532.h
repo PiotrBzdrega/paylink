@@ -18,6 +18,7 @@ namespace nfc
         void poll_task(std::stop_token stop_token, cb::CardDetectionCallback cb);
 
     public:
+        // not necessary to check tty. It is set manually in /etc/nfc/libnfc.conf "pn532_uart:/dev/ttyUSB0"
         pn532(BS::thread_pool<>& pool_);
         int poll(cb::CardDetectionCallback cb);
         ~pn532();

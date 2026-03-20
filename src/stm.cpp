@@ -16,16 +16,16 @@ namespace uc
         /* SERIAL PORTS */
 
     }
-    void stm::sync_worker(std::stop_token stop_token)
+    void stm::sync_worker(std::stop_token stop_token, std::string_view channel_name)
     {
         /* Create serial port handler */
-        com::serial sync_serial{"/dev/ttyACM1"};
+        com::serial sync_serial{channel_name /* "/dev/ttyACM1" */};
         bool connected{false};
 
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
         {
-            if(sync_serial.reconnect(connected) == -1)
+            if (sync_serial.reconnect(connected) == -1)
             {
                 connected = false;
                 mik::logger::trace("Failed to connect to serial port in sync worker");
@@ -104,15 +104,15 @@ namespace uc
             }
         }
     }
-    void stm::irq_worker(std::stop_token stop_token)
+    void stm::irq_worker(std::stop_token stop_token, std::string_view channel_name)
     {
-        com::serial irq_serial{"/dev/ttyACM0"};
+        com::serial irq_serial{channel_name /* "/dev/ttyACM0" */};
         bool connected{false};
 
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
         {
-            if(irq_serial.reconnect(connected) == -1)
+            if (irq_serial.reconnect(connected) == -1)
             {
                 connected = false;
                 mik::logger::trace("Failed to connect to serial port in irq_worker worker");
@@ -123,7 +123,7 @@ namespace uc
             {
                 connected = true;
             }
-        
+
             std::string irq;
             auto res = irq_serial >> irq;
             if (res > 0)
@@ -153,8 +153,6 @@ namespace uc
     }
     stm::stm(BS::thread_pool<> &pool_) : pool{pool_}
     {
-        sync_thr = std::jthread(std::bind_front(&stm::sync_worker, this));
-        irq_thr = std::jthread(std::bind_front(&stm::irq_worker, this));
     }
     stm::~stm()
     {
@@ -186,5 +184,10 @@ namespace uc
     void stm::set_sensors_state_change_callback(cb::SignalChangeCallback func)
     {
         signal_change_callback = func;
+    }
+    void stm::run_communication(std::string_view sync_channel_name, std::string_view irq_channel_name)
+    {
+        sync_thr = std::jthread(std::bind_front(&stm::sync_worker, this), sync_channel_name);
+        irq_thr = std::jthread(std::bind_front(&stm::irq_worker, this), irq_channel_name);
     };
 }

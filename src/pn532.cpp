@@ -79,13 +79,13 @@ namespace nfc
                     //  so make sure so is it
                     pool.detach_task([cb, target_info]()
                                      { cb(target_info.data()); });
-                    printf("Waiting for card removing...");
+                    mik::logger::debug("Waiting for card removing...");
                     fflush(stdout);
                     while (0 == nfc_initiator_target_is_present(pnd, NULL))
                     {
                     }
                     nfc_perror(pnd, "nfc_initiator_target_is_present");
-                    mik::logger::debug("done.\n");
+                    mik::logger::debug("done");
                 }
                 else
                 {

@@ -21,8 +21,8 @@ namespace uc
         BS::thread_pool<> &pool;
         com::thread_safe_queue<std::pair<std::string, std::optional<std::promise<std::string>>>> request_queue;
         std::string last_states;
-        void sync_worker(std::stop_token stop_token);
-        void irq_worker(std::stop_token stop_token);
+        void sync_worker(std::stop_token stop_token, std::string_view channel_name);
+        void irq_worker(std::stop_token stop_token, std::string_view channel_name);
         std::string create_request(std::string_view request);
 
         /*                 irq thread adds element to thread save queue and respond with satatus
@@ -38,6 +38,7 @@ namespace uc
         std::string set_signal_req();
         std::string test_req();
         void set_sensors_state_change_callback(cb::SignalChangeCallback func);
+        void run_communication(std::string_view sync_channel_name, std::string_view irq_channel_name);
     };
 
 }

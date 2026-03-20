@@ -1,7 +1,8 @@
 #include "utils.h"
 #include <thread>
-#include <print>
+#include "logger.h"
 #include <chrono>
+#include <unordered_map>
 #include <cstdlib>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,20 +16,22 @@
 
 namespace
 {
-    int names_init(struct udev *udev_, struct udev_hwdb *hwdb_)
+// TODO: fix c pointers -> smart pointers
+
+    int names_init(struct udev **udev_, struct udev_hwdb **hwdb_)
     {
-        udev_ = udev_new();
-        if (!udev_)
+        *udev_ = udev_new();
+        if (!*udev_)
             return -1;
 
-        hwdb_ = udev_hwdb_new(udev_);
+        *hwdb_ = udev_hwdb_new(*udev_);
         return hwdb_ ? 0 : -1;
     }
 
-    void names_exit(struct udev *udev_, struct udev_hwdb *hwdb_)
+    void names_exit(struct udev **udev_, struct udev_hwdb **hwdb_)
     {
-        hwdb_ = udev_hwdb_unref(hwdb_);
-        udev_ = udev_unref(udev_);
+        *hwdb_ = udev_hwdb_unref(*hwdb_);
+        *udev_ = udev_unref(*udev_);
     }
 
     int read_sysfs_prop(char *buf, size_t size, const char *sysfs_name, const char *propname)
@@ -525,7 +528,7 @@ namespace paylink
         int err;
         int bus = -1, devnum = -1;
         /* by default, print names as well as numbers */
-        if (names_init(udev, hwdb) < 0)
+        if (names_init(&udev, &hwdb) < 0)
             fprintf(stderr, "unable to initialize usb spec");
 
         err = libusb_init(&ctx);
@@ -536,7 +539,7 @@ namespace paylink
         }
         std::string serial_port = list_devices(ctx, udev, hwdb, bus, devnum, vendor, product);
 
-        names_exit(udev, hwdb);
+        names_exit(&udev, &hwdb);
         libusb_exit(ctx);
         return serial_port;
     }

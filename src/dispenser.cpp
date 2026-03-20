@@ -1,6 +1,5 @@
 #include "dispenser.h"
 #include "logger.h"
-#include <print>
 #include <format>
 
 namespace paylink

@@ -94,7 +94,7 @@ namespace com
         {
             if (task_ref.get_id() == id_)
             {
-                // std::println("removed task {}", id_);
+                mik::logger::trace("removed task {}", id_);
                 tasks.erase(tasks.begin() + task_i);
                 return true;
             }
@@ -107,7 +107,7 @@ namespace com
         repeat_t r = repeat_ > 0 ? repeat_t{repeat_ - 1} : std::nullopt;
         auto id = std::hash<std::string_view>{}(std::to_string(counter++));
         {
-            // std::println("new task {}", id);
+            mik::logger::trace("new task {}", id);
             std::lock_guard<std::mutex> lck(mtx);
             tasks.emplace_back(std::move(t_), interval_, id, r, delay_);
         }

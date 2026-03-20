@@ -125,7 +125,7 @@ namespace com
             }
         }
 
-        // Here we assume we received ASCII data, but you might be sending raw bytes (in that case, don't try and
+        // TODO: Here we assume we received ASCII data, but you might be sending raw bytes (in that case, don't try and
         // print it to the screen like this!)
 
         return msg_bytes;
