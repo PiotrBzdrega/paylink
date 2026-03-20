@@ -106,18 +106,19 @@ namespace mik
                 }
             }();
 
+            auto zoned_time = std::chrono::zoned_time{std::chrono::current_zone(), std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now())};
+            auto message = std::format("[{:%Y-%m-%d %H:%M:%S}] [{}] [{}:{}]: {}", zoned_time, level_str, fmt.loc.file_name(), fmt.loc.line(), /* payload */ std::format(fmt.fmt, std::forward<Args>(args)...));
+
             {
                 std::scoped_lock lock{s_mutex};
                 if (outstream)
                 {
-                    std::print(*outstream, "[{:%Y-%m-%d %H:%M:%S}] [{}] [{}:{}]: ", std::chrono::zoned_time{std::chrono::current_zone(), std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now())}, level_str, fmt.loc.file_name(), fmt.loc.line());
-                    std::println(*outstream, fmt.fmt, std::forward<Args>(args)...);
+                    std::println(*outstream, "{}", message);
                 }
 
                 if (standard_output)
                 {
-                    std::print("[{:%Y-%m-%d %H:%M:%S}] [{}] [{}:{}]: ", std::chrono::zoned_time{std::chrono::current_zone(), std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now())}, level_str, fmt.loc.file_name(), fmt.loc.line());
-                    std::println(fmt.fmt, std::forward<Args>(args)...);
+                    std::println("{}", message);
                 }
             }
         }
