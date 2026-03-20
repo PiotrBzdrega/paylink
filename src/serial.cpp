@@ -15,6 +15,12 @@ namespace com
         // Open the serial port. Change device path as needed (currently set to an standard FTDI USB-UART cable type device)
         fd = ::open(path.data(), O_RDWR);
 
+        if (fd == -1)
+        {
+            mik::logger::trace("Error {} from open: {}", errno, strerror(errno));
+            return -1;
+        }
+
         // Create new termios struct, we call it 'tty' for convention
         struct termios tty;
 
@@ -63,7 +69,6 @@ namespace com
 
     serial::serial(std::string_view path_, readAuxFunc read_validator_) : path(path_), read_validator(read_validator_)
     {
-        open();
     }
     serial::~serial()
     {
@@ -129,26 +134,20 @@ namespace com
     {
         return "https://github.com/wjwwood/serial/blob/main/src/impl/list_ports/list_ports_linux.cc";
     }
-    int serial::reconnect()
+    int serial::reconnect(bool keep_valid_fd)
     {
-        if (fd != -1)
+        if (fd != -1 && !keep_valid_fd)
         {
             close(fd);
             fd = -1;
         }
-
-        int result;
-        uint8_t delay{1};
-        do
+        else if (fd != -1 && keep_valid_fd)
         {
-            /* increase delay each time till max of uint8_t */
-            delay |= delay << 1;
-            std::this_thread::sleep_for(std::chrono::seconds(delay));
+            mik::logger::trace("Serial port already open with fd {}, skipping reconnect", fd);
+            return 0;
+        }
 
-            result = open();
-
-        } while (result <= 0);
-
-        return 0;
+        /* return 0 if successful, -1 if failed */
+        return open() < 0 ? -1 : 0;
     }
 }

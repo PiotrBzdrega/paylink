@@ -130,6 +130,12 @@ namespace nfc
 
     pn532::~pn532()
     {
+        // TODO: Request stop, close connection then join thread , not sure if joining is needed with jthread and also if stop_token is necessary if we close pnd anyway
+        if (poll_thread.joinable())
+        {
+            poll_thread.request_stop();
+        }
+
         if (pnd)
         {
             // TODO: check what happen when there is no blocking command like poll or init and we call abort
@@ -141,5 +147,11 @@ namespace nfc
         {
             nfc_exit(context);
         }
+
+        if (poll_thread.joinable())
+        {
+            poll_thread.join();
+        }
+        mik::logger::trace("pn532 destructor end");
     }
 }

@@ -20,10 +20,23 @@ namespace uc
     {
         /* Create serial port handler */
         com::serial sync_serial{"/dev/ttyACM1"};
+        bool connected{false};
 
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
         {
+            if(sync_serial.reconnect(connected) == -1)
+            {
+                connected = false;
+                mik::logger::trace("Failed to connect to serial port in sync worker");
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+                continue;
+            }
+            else
+            {
+                connected = true;
+            }
+
             std::pair<std::string, std::optional<std::promise<std::string>>> request{};
 
             /* Wait for new request */
@@ -52,11 +65,8 @@ namespace uc
                 {
                     request.second.value().set_value("");
                 }
-                /* Check if connection has been canceled on purpose */
-                if (!stop_token.stop_requested())
-                {
-                    sync_serial.reconnect();
-                }
+                connected = false;
+                mik::logger::error("Failed to read response from serial port in sync worker");
             }
             else
             {
@@ -97,9 +107,23 @@ namespace uc
     void stm::irq_worker(std::stop_token stop_token)
     {
         com::serial irq_serial{"/dev/ttyACM0"};
+        bool connected{false};
+
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
         {
+            if(irq_serial.reconnect(connected) == -1)
+            {
+                connected = false;
+                mik::logger::trace("Failed to connect to serial port in irq_worker worker");
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+                continue;
+            }
+            else
+            {
+                connected = true;
+            }
+        
             std::string irq;
             auto res = irq_serial >> irq;
             if (res > 0)
@@ -112,12 +136,10 @@ namespace uc
                 }
             }
             else
-                /* Check if connection has been canceled on purpose */
-                if (!stop_token.stop_requested())
-                { 
-                    //TODO: make sure that
-                    irq_serial.reconnect();
-                }
+            {
+                connected = false;
+                mik::logger::error("Failed to read response from serial port in irq worker");
+            }
         }
     }
 
@@ -133,6 +155,21 @@ namespace uc
     {
         sync_thr = std::jthread(std::bind_front(&stm::sync_worker, this));
         irq_thr = std::jthread(std::bind_front(&stm::irq_worker, this));
+    }
+    stm::~stm()
+    {
+        if (sync_thr.joinable())
+        {
+            sync_thr.request_stop();
+            sync_thr.join();
+        }
+
+        if (irq_thr.joinable())
+        {
+            irq_thr.request_stop();
+            irq_thr.join();
+        }
+        mik::logger::trace("stm destructor end");
     }
     std::string stm::set_signal_req()
     {

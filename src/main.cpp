@@ -51,7 +51,7 @@ void AbortHandler([[maybe_unused]] int signum)
 
 int main()
 {
-    mik::logger::setup(true, nullptr, mik::LogLevel::DEBUG);
+    mik::logger::setup(true, nullptr, mik::LogLevel::TRACE);
 
     /*-- Catch signals so we exit cleanly -------------------------------*/
     std::signal(SIGHUP, AbortHandler);

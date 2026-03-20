@@ -114,6 +114,8 @@ namespace paylink
 {
     system::system() : nfc_reader(pool), stm32(pool), sensors(pool)
     {
+        utils::getSerialPortPath();
+
         if (init())
         {
             /* Start interval functions */

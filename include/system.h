@@ -14,7 +14,6 @@ namespace paylink
     class system
     {
     private:
-        std::jthread worker_thread;
         acceptor note_acceptor;
         dispenser coin_dispenser;
         BS::thread_pool<> pool{4};

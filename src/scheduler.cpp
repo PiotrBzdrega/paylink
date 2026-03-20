@@ -1,4 +1,5 @@
 #include "scheduler.h"
+#include "logger.h"
 
 namespace com
 {
@@ -148,5 +149,6 @@ namespace com
     scheduler::~scheduler()
     {
         stop();
+        mik::logger::trace("scheduler destructor end");
     }
 }

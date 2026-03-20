@@ -33,7 +33,7 @@ namespace uc
                         b) drop thread save queue and use just mutex for each call */
     public:
         stm(BS::thread_pool<> &pool_);
-        ~stm() = default;
+        ~stm();
         std::string get_signals_req();
         std::string set_signal_req();
         std::string test_req();
