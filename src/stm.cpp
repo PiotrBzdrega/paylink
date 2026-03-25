@@ -1,7 +1,10 @@
 #include <string>
+#include <unordered_map>
 #include "serial.h"
 #include "logger.h"
 #include "stm.h"
+#include <libudev.h>
+#include <stdio.h>
 
 namespace uc
 {
@@ -12,15 +15,70 @@ namespace uc
         constexpr auto SET_SIGNAL_REQ{"SET_SIGNALS"};
         constexpr auto TEST_REQ{"SET_SIGNALS"};
         constexpr auto IRQ_MSG{"!"};
+        constexpr auto EXIT_MSG{"EXIT"};
 
         /* SERIAL PORTS */
+        void get_serial_ports(std::unordered_map<std::string, std::string> &serial_ports)
+        {
+            struct udev *udev = udev_new();
+            struct udev_enumerate *enumerate = udev_enumerate_new(udev);
 
+            udev_enumerate_add_match_subsystem(enumerate, "tty");
+            udev_enumerate_scan_devices(enumerate);
+
+            struct udev_list_entry *devices = udev_enumerate_get_list_entry(enumerate);
+            struct udev_list_entry *entry;
+
+            udev_list_entry_foreach(entry, devices)
+            {
+                const char *path = udev_list_entry_get_name(entry);
+                struct udev_device *dev = udev_device_new_from_syspath(udev, path);
+
+                // Walk up to USB interface
+                struct udev_device *usb_if =
+                    udev_device_get_parent_with_subsystem_devtype(
+                        dev, "usb", "usb_interface");
+
+                if (usb_if)
+                {
+                    // const char *if_num =
+                    //     udev_device_get_sysattr_value(usb_if, "bInterfaceNumber");
+
+                    const char *if_str =
+                        udev_device_get_sysattr_value(usb_if, "interface");
+
+                    if (serial_ports.contains(if_str))
+                    {
+                        const char *devnode = udev_device_get_devnode(dev);
+                        if (!devnode)
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            serial_ports[if_str] = devnode;
+                        }
+                    }
+                }
+                udev_device_unref(dev);
+            }
+
+            udev_enumerate_unref(enumerate);
+            udev_unref(udev);
+        }
     }
     void stm::sync_worker(std::stop_token stop_token, std::string_view channel_name)
     {
         /* Create serial port handler */
-        com::serial sync_serial{channel_name /* "/dev/ttyACM1" */};
-        bool connected{false};
+        com::serial sync_serial{channel_name};
+        /* To not close/open serial port explicitly, only in reconnect() */
+        bool connected{};
+        // TODO: make it more robust with std::optional
+        struct sync_task_t
+        {
+            bool present{};
+            std::pair<std::string, std::optional<std::promise<std::string>>> request{};
+        } sync_task;
 
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
@@ -37,18 +95,28 @@ namespace uc
                 connected = true;
             }
 
-            std::pair<std::string, std::optional<std::promise<std::string>>> request{};
+            /* Check if request is not available from last run */
+            if (!sync_task.present)
+            {
+                /* Wait for new request */
+                request_queue.pop(sync_task.request);
 
-            /* Wait for new request */
-            request_queue.pop(request);
+                /* Make sure it is not request to terminate thread */
+                if (sync_task.request.first == EXIT_MSG)
+                {
+                    connected = false;
+                    continue;
+                }
+                sync_task.present = true;
+            }
 
             /* Send message to serial port  */
-            auto write_bytes = sync_serial << request.first;
+            auto write_bytes = sync_serial << sync_task.request.first;
 
             /* Number of sended bytes is the same as requested message  */
-            if (static_cast<int>(request.first.size()) != write_bytes)
+            if (static_cast<int>(sync_task.request.first.size()) != write_bytes)
             {
-                mik::logger::error("Number of bytes delivered to serial port {} differs from effective request message {}", write_bytes, request.first.size());
+                mik::logger::error("Number of bytes delivered to serial port {} differs from effective request message {}", write_bytes, sync_task.request.first.size());
             }
 
             /* Container for response content */
@@ -60,11 +128,13 @@ namespace uc
             /* error response */
             if (read_bytes <= 0)
             {
-                /* Direct calls contains promise that they are waiting for */
-                if (request.second.has_value())
-                {
-                    request.second.value().set_value("");
-                }
+                /* DO NOT SEND EMPTY RESULT IF CONNECTION TO SERIAL PORT DIED -> REPEAT REQUEST */
+                // TODO: if all tasks must be correct, then i need to validate them before sending
+                // /* Direct calls contains promise that they are waiting for */
+                // if (sync_task.request.second.has_value())
+                // {
+                //     sync_task.request.second.value().set_value("");
+                // }
                 connected = false;
                 mik::logger::error("Failed to read response from serial port in sync worker");
             }
@@ -73,7 +143,7 @@ namespace uc
                 bool signals_changed{};
 
                 /* Specific handling for Signals state */
-                if (request.first == GET_SIGNALS_REQ)
+                if (sync_task.request.first == GET_SIGNALS_REQ)
                 {
                     /* States change detection */
                     if (response != last_states)
@@ -85,10 +155,10 @@ namespace uc
                 }
 
                 /* Direct calls contains promise that they are waiting for */
-                if (request.second.has_value())
+                if (sync_task.request.second.has_value())
                 {
                     /* Pass value to the waiting instance */
-                    request.second.value().set_value(response);
+                    sync_task.request.second.value().set_value(response);
                 }
                 /* It is not direct call, but signals states has change */
                 else if (signals_changed)
@@ -101,6 +171,8 @@ namespace uc
                                          { signal_change_callback(a.data(), 3); });
                     }
                 }
+                /* Task completed */
+                sync_task.present = false;
             }
         }
     }
@@ -151,11 +223,17 @@ namespace uc
 
         return fut.get();
     }
+    void stm::create_terminating_request()
+    {
+        request_queue.emplace_front(EXIT_MSG, std::nullopt);
+    }
     stm::stm(BS::thread_pool<> &pool_) : pool{pool_}
     {
     }
     stm::~stm()
     {
+        mik::logger::trace("stm destructor start");
+        create_terminating_request();
         if (sync_thr.joinable())
         {
             sync_thr.request_stop();
@@ -185,9 +263,30 @@ namespace uc
     {
         signal_change_callback = func;
     }
-    void stm::run_communication(std::string_view sync_channel_name, std::string_view irq_channel_name)
+    int stm::run_communication()
     {
-        sync_thr = std::jthread(std::bind_front(&stm::sync_worker, this), sync_channel_name);
-        irq_thr = std::jthread(std::bind_front(&stm::irq_worker, this), irq_channel_name);
+        if (sync_thr.joinable() || irq_thr.joinable()) // check if previous thread ended
+        {
+            mik::logger::error("Cannot run stm communication, previous thread still running");
+            return -1; // previous thread still running
+        }
+        else
+        {
+            std::unordered_map<std::string, std::string> serial_ports{
+                {"Pico SYNC", ""},
+                {"Pico ASYNC", ""}};
+
+            get_serial_ports(serial_ports);
+
+            if (serial_ports["Pico SYNC"].empty() || serial_ports["Pico ASYNC"].empty())
+            {
+                mik::logger::error("Cannot find tty for Pico SYNC or Pico ASYNC");
+                return -1;
+            }
+
+            sync_thr = std::jthread(std::bind_front(&stm::sync_worker, this), serial_ports["Pico SYNC"]);
+            irq_thr = std::jthread(std::bind_front(&stm::irq_worker, this), serial_ports["Pico ASYNC"]);
+            return 0;
+        }
     };
 }

@@ -116,10 +116,7 @@ namespace paylink
     {
         if (init())
         {
-            create map with vendor/product id and let the function fills it
-            mik::logger::debug("{}", utils::getSerialPortPath());
-            put here strings from function above
-            stm32.run_communication("", "");
+            stm32.run_communication();
 
             /* Start interval functions */
             {

@@ -28,6 +28,6 @@ namespace paylink
         static std::pair<int, std::string_view> DESStatus();
         // set list of the devices and return map of ttys
         // use product/vendor name instead productid/vendorid
-        static std::string getSerialPortPath(int vendor = -1, int product = -1);
+        // static std::string getSerialPortPath(int vendor = -1, int product = -1);
     };
 }

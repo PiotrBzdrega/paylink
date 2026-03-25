@@ -24,8 +24,13 @@ namespace uc
         void sync_worker(std::stop_token stop_token, std::string_view channel_name);
         void irq_worker(std::stop_token stop_token, std::string_view channel_name);
         std::string create_request(std::string_view request);
+        /**
+         * @brief Synchronous channel waits for request on blocking queue call,
+         * terminating request unlocks blocked status, recipient must handle it accordingly to be effective
+         */
+        void create_terminating_request();
 
-        /*                 irq thread adds element to thread save queue and respond with satatus
+        /*                 irq thread adds element to thread save queue and respond with status
                         sync thread waits for element, when appears -> calls it and execute callback if state has change
                         how to iject direct calls to stm with thread safe queue.
                         a) insert direct call to queue (in the front [higher priority]) and ask for future that you will be waiting at
@@ -38,7 +43,7 @@ namespace uc
         std::string set_signal_req();
         std::string test_req();
         void set_sensors_state_change_callback(cb::SignalChangeCallback func);
-        void run_communication(std::string_view sync_channel_name, std::string_view irq_channel_name);
+        int run_communication();
     };
 
 }
