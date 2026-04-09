@@ -49,7 +49,7 @@ void AbortHandler([[maybe_unused]] int signum)
     cv.notify_one();
 }
 
-int main()
+int main(int argc, char* argv[])
 {
     mik::logger::setup(true, nullptr, mik::LogLevel::TRACE);
 
@@ -85,7 +85,13 @@ int main()
     std::signal(SIGPWR, AbortHandler);
     std::signal(SIGSYS, AbortHandler);
 
-    paylink::system sys;
+    if (argc < 2)
+    {
+        mik::logger::error("Configuration file path is required as an argument");
+        return 1;
+    }
+
+    paylink::system sys(argv[1]);
     // TODO: IS_NOTE_ACCEPTOR(Unit),
 
     // {

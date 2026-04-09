@@ -8,7 +8,7 @@ namespace cb
         typedef void (*ErrorEventCallback)(const char *msg);
         // typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
         // TODO: why do i have there signals ??
-        typedef void (*SignalChangeCallback)(const uint8_t *view, int v_size);
+        typedef void (*SignalChangeCallback)(const char *view);
         typedef void (*ButtonsChangeCallback)(const uint16_t state, const uint16_t open_edge, const uint16_t close_edge);
         typedef void (*CardDetectionCallback)(const char *uid);
         /*

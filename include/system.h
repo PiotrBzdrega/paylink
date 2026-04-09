@@ -40,6 +40,7 @@ namespace paylink
         bool init();
         void update_banknote();
         void update_event();
+        void read_configuration(std::string_view config_path);
 
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
@@ -49,7 +50,8 @@ namespace paylink
         // fill calbacks for all calls
         // test nfc reader phisically
         // TODO: think through if we need some configuration file for input mapings ??
-        system(/* args */);
+        system() = delete;
+        system(std::string_view config_path);
         /* ASYNC */
         void set_new_banknote_callback(cb::BanknoteCallback func);
         int set_card_detected_callback(cb::CardDetectionCallback func);

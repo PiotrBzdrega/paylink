@@ -3,6 +3,7 @@
 #include "ImheiEvent.h"
 #include "logger.h"
 #include "version.h"
+#include "toml.hpp"
 #include <chrono>
 #include <functional>
 #include <ranges>
@@ -112,8 +113,9 @@ namespace
 
 namespace paylink
 {
-    system::system() : nfc_reader(pool), stm32(pool), sensors(pool)
+    system::system(std::string_view config_path) : nfc_reader(pool), stm32(pool), sensors(pool)
     {
+        read_configuration(config_path);
         if (init())
         {
             stm32.run_communication();
@@ -285,6 +287,12 @@ namespace paylink
                 mik::logger::debug("Event: {}, ", text);
             }
         }
+    }
+
+    void system::read_configuration(std::string_view config_path)
+    {
+        auto config = toml::parse_file( config_path );
+        auto logger_config = config["logger"]["level"].value<std::string_view>().value_or("info");  
     }
 
     int system::dispense_coins(uint32_t amount)

@@ -1,10 +1,11 @@
 #include <string>
 #include <unordered_map>
+#include <libudev.h>
+#include <stdio.h>
 #include "serial.h"
 #include "logger.h"
 #include "stm.h"
-#include <libudev.h>
-#include <stdio.h>
+#include "Serial.h"
 
 namespace uc
 {
@@ -70,7 +71,8 @@ namespace uc
     void stm::sync_worker(std::stop_token stop_token, std::string_view channel_name)
     {
         /* Create serial port handler */
-        com::serial sync_serial{channel_name};
+        // com::serial sync_serial{channel_name};
+        com::Serial sync_serial(channel_name /* , 115200 */);
         /* To not close/open serial port explicitly, only in reconnect() */
         bool connected{};
         // TODO: make it more robust with std::optional
@@ -80,13 +82,17 @@ namespace uc
             std::pair<std::string, std::optional<std::promise<std::string>>> request{};
         } sync_task;
 
+        /* Create stop callback to unlock endless read */
+        std::stop_callback stop_cb(stop_token, [&sync_serial]()
+                                   { sync_serial.interrupt_wait(); });
+
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
         {
-            if (sync_serial.reconnect(connected) == -1)
+            if (auto res = sync_serial.reconnect(connected); !res)
             {
                 connected = false;
-                mik::logger::trace("Failed to connect to serial port in sync worker");
+                mik::logger::trace("Failed to connect to serial port in sync_worker worker: {}", res.error());
                 std::this_thread::sleep_for(std::chrono::seconds(10));
                 continue;
             }
@@ -111,34 +117,22 @@ namespace uc
             }
 
             /* Send message to serial port  */
-            auto write_bytes = sync_serial << sync_task.request.first;
-
-            /* Number of sended bytes is the same as requested message  */
-            if (static_cast<int>(sync_task.request.first.size()) != write_bytes)
+            auto wr_res = sync_serial.write(sync_task.request.first, 1000);
+            if (!wr_res)
             {
-                mik::logger::error("Number of bytes delivered to serial port {} differs from effective request message {}", write_bytes, sync_task.request.first.size());
+                mik::logger::error("Failed to write to serial port in sync worker : {}", wr_res.error());
+                connected = false;
+                continue;
             }
-
-            /* Container for response content */
-            std::string response;
 
             /* Read response from serial port */
-            auto read_bytes = sync_serial >> response;
+            auto rd_res = sync_serial.read([](std::string_view data)
+                                           {
+                                               mik::logger::info("Received data: {}", data);
+                                               return true; // Stop reading after first data received
+                                           });
 
-            /* error response */
-            if (read_bytes <= 0)
-            {
-                /* DO NOT SEND EMPTY RESULT IF CONNECTION TO SERIAL PORT DIED -> REPEAT REQUEST */
-                // TODO: if all tasks must be correct, then i need to validate them before sending
-                // /* Direct calls contains promise that they are waiting for */
-                // if (sync_task.request.second.has_value())
-                // {
-                //     sync_task.request.second.value().set_value("");
-                // }
-                connected = false;
-                mik::logger::error("Failed to read response from serial port in sync worker");
-            }
-            else
+            if (rd_res)
             {
                 bool signals_changed{};
 
@@ -146,10 +140,10 @@ namespace uc
                 if (sync_task.request.first == GET_SIGNALS_REQ)
                 {
                     /* States change detection */
-                    if (response != last_states)
+                    if (rd_res.value() != last_states)
                     {
                         /* Update current states data */
-                        last_states = response;
+                        last_states = rd_res.value();
                         signals_changed = true;
                     }
                 }
@@ -158,36 +152,54 @@ namespace uc
                 if (sync_task.request.second.has_value())
                 {
                     /* Pass value to the waiting instance */
-                    sync_task.request.second.value().set_value(response);
+                    sync_task.request.second.value().set_value(rd_res.value().data());
                 }
                 /* It is not direct call, but signals states has change */
                 else if (signals_changed)
                 {
                     if (signal_change_callback)
                     {
-                        std::array<uint8_t, 3> a{1, 2, 3};
+                        std::string msg{rd_res.value().data(), rd_res.value().size()};
                         // TODO: forward real message not stub
-                        pool.detach_task([this, response, a]()
-                                         { signal_change_callback(a.data(), 3); });
+                        pool.detach_task([this, msg = std::move(msg)]()
+                                         { signal_change_callback(msg.data()); });
                     }
                 }
                 /* Task completed */
                 sync_task.present = false;
             }
+            else
+            {
+                /* error response */
+
+                /* DO NOT SEND EMPTY RESULT IF CONNECTION TO SERIAL PORT DIED -> REPEAT REQUEST */
+                // TODO: if all tasks must be correct, then i need to validate them before sending
+                // /* Direct calls contains promise that they are waiting for */
+                // if (sync_task.request.second.has_value())
+                // {
+                //     sync_task.request.second.value().set_value("");
+                // }
+                connected = false;
+                mik::logger::error("Failed to read response from serial port in sync worker : {}", rd_res.error());
+            }
         }
     }
     void stm::irq_worker(std::stop_token stop_token, std::string_view channel_name)
     {
-        com::serial irq_serial{channel_name /* "/dev/ttyACM0" */};
+        com::Serial irq_serial{channel_name /* "/dev/ttyACM0" */};
         bool connected{false};
+
+        /* Create stop callback to unlock endless read */
+        std::stop_callback stop_cb(stop_token, [&irq_serial]()
+                                   { irq_serial.interrupt_wait(); });
 
         /* Execute loop until stop requested */
         while (!stop_token.stop_requested())
         {
-            if (irq_serial.reconnect(connected) == -1)
+            if (auto res = irq_serial.reconnect(connected); !res)
             {
                 connected = false;
-                mik::logger::trace("Failed to connect to serial port in irq_worker worker");
+                mik::logger::trace("Failed to connect to serial port in irq_worker worker: {}", res.error());
                 std::this_thread::sleep_for(std::chrono::seconds(10));
                 continue;
             }
@@ -196,11 +208,16 @@ namespace uc
                 connected = true;
             }
 
-            std::string irq;
-            auto res = irq_serial >> irq;
-            if (res > 0)
+            /* Read response from serial port */
+            auto rd_res = irq_serial.read([](std::string_view data)
+                                          {
+                                              mik::logger::info("Received data: {}", data);
+                                              return true; // Stop reading after first data received
+                                          });
+
+            if (rd_res)
             {
-                if (irq == IRQ_MSG)
+                if (rd_res.value() == IRQ_MSG)
                 {
                     // TODO: consider obtain some counter from irq
                     /* add request to thread as less critical*/
@@ -210,7 +227,7 @@ namespace uc
             else
             {
                 connected = false;
-                mik::logger::error("Failed to read response from serial port in irq worker");
+                mik::logger::error("Failed to read response from serial port in irq worker : {}", rd_res.error());
             }
         }
     }

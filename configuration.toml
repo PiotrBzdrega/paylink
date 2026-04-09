@@ -1,0 +1,9 @@
+[logger]
+# TRACE, DEBUG, INFO, ERROR, NONE
+level = "TRACE" 
+stdout = false
+file = "/tmp/paylink.log"
+
+[modules]
+pn532 = "disabled"
+acceptor = "stub"

@@ -64,5 +64,9 @@
         "mutex": "cpp",
         "fstream": "cpp",
         "cinttypes": "cpp"
+    },
+    "cmake.parallelJobs": 1,
+    "cmake.debugConfig": {
+        "args": ["/home/dev/Sources/paylink-app/configuration.toml"]
     }
 }
