@@ -1,9 +1,9 @@
 #include "system.h"
 #include "utils.h"
 #include "ImheiEvent.h"
-#include "logger.h"
 #include "version.h"
 #include "toml.hpp"
+#include "magic_enum.hpp"
 #include <chrono>
 #include <functional>
 #include <ranges>
@@ -116,6 +116,13 @@ namespace paylink
     system::system(std::string_view config_path) : nfc_reader(pool), stm32(pool), sensors(pool)
     {
         read_configuration(config_path);
+        /* Logger */
+        if (config.logger.file_path)
+        {
+            log_file.open(*config.logger.file_path, std::ios::out | std::ios::app);
+        }
+        mik::logger::setup(config.logger.standard_out, log_file.is_open() ? &log_file : nullptr, config.logger.level);
+
         if (init())
         {
             stm32.run_communication();
@@ -291,8 +298,80 @@ namespace paylink
 
     void system::read_configuration(std::string_view config_path)
     {
-        auto config = toml::parse_file( config_path );
-        auto logger_config = config["logger"]["level"].value<std::string_view>().value_or("info");  
+        auto configuration = toml::parse_file(config_path);
+
+        /* LOGGER LEVEL */
+        if (auto level = configuration["logger"]["level"]; level)
+        {
+            if (level.is_string())
+            {
+                config.logger.level = magic_enum::enum_cast<mik::LogLevel>(level.value<std::string>().value()).value_or(config.logger.level);
+            }
+        }
+
+        /* LOGGER STDOUT */
+        if (auto standard_out = configuration["logger"]["stdout"]; standard_out)
+        {
+            if (standard_out.is_boolean())
+            {
+                config.logger.standard_out = standard_out.value<bool>().value();
+            }
+        }
+
+        /* LOGGER FILEPATH */
+        if (auto file_path = configuration["logger"]["file"]; file_path)
+        {
+            if (file_path.is_string())
+            {
+                config.logger.file_path = file_path.value<std::string>().value();
+            }
+        }
+
+        /* MODULES */
+        /* PAYLINK */
+        if (auto paylink = configuration["modules"]["paylink"]; paylink)
+        {
+            if (paylink.is_string())
+            {
+                config.module.paylink = magic_enum::enum_cast<ConfigT::module_t::ModType>(paylink.value<std::string>().value()).value_or(config.module.paylink);
+            }
+        }
+
+        /* ACCEPTOR */
+        if (auto acceptor = configuration["modules"]["acceptor"]; acceptor)
+        {
+            if (acceptor.is_string())
+            {
+                config.module.acceptor = magic_enum::enum_cast<ConfigT::module_t::ModType>(acceptor.value<std::string>().value()).value_or(config.module.acceptor);
+            }
+        }
+
+        /* DISPENSER */
+        if (auto dispenser = configuration["modules"]["dispenser"]; dispenser)
+        {
+            if (dispenser.is_string())
+            {
+                config.module.dispenser = magic_enum::enum_cast<ConfigT::module_t::ModType>(dispenser.value<std::string>().value()).value_or(config.module.dispenser);
+            }
+        }
+
+        /* PN532 */
+        if (auto pn532 = configuration["modules"]["pn532"]; pn532)
+        {
+            if (pn532.is_string())
+            {
+                config.module.pn532 = magic_enum::enum_cast<ConfigT::module_t::ModType>(pn532.value<std::string>().value()).value_or(config.module.pn532);
+            }
+        }
+
+        /* STM */
+        if (auto stm = configuration["modules"]["stm"]; stm)
+        {
+            if (stm.is_string())
+            {
+                config.module.stm = magic_enum::enum_cast<ConfigT::module_t::ModType>(stm.value<std::string>().value()).value_or(config.module.stm);
+            }
+        }
     }
 
     int system::dispense_coins(uint32_t amount)
@@ -356,6 +435,7 @@ namespace paylink
         /* Post payment Task */
         scheduler.submit_task([this, prom = std::move(prom)]() mutable
                               { prom.set_value(sensors.get_buttons_state(true)); });
+                              //TODO: what if get_buttons_state is called with fault
 
         return fut.get();
     }
@@ -471,6 +551,7 @@ namespace paylink
         for (int i : std::views::iota(0, INPUTS_LEN))
         {
             /* OPEN */
+            //TODO: what paylink will be turned off, how does it affect Commands like SwitchOpens, SwitchCloses
             auto new_open_counter = SwitchOpens(i);
             if (open_counter[i] != new_open_counter)
             {

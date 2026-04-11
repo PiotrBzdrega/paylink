@@ -4,6 +4,7 @@ level = "TRACE"
 stdout = false
 file = "/tmp/paylink.log"
 
-[modules]
-pn532 = "disabled"
-acceptor = "stub"
+[module]
+# DISABLED, STUB, ENABLED
+pn532 = "DISABLED"
+acceptor = "STUB"

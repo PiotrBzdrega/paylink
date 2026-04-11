@@ -4,16 +4,19 @@
 #include "dispenser.h"
 #include "pn532.h"
 #include "stm.h"
+#include "logger.h"
 #include "BS_thread_pool.hpp"
 #include "callbacks.h"
 #include "scheduler.h"
-// TODO should composite acceptor, dispenser, paylink, stmf4, pn542
+
+// TODO: add thirdparty include directory to keep current version of only-header libraries
 namespace paylink
 {
     constexpr static auto INPUTS_LEN{16};
     class system
     {
     private:
+        std::ofstream log_file;
         acceptor note_acceptor;
         dispenser coin_dispenser;
         BS::thread_pool<> pool{4};
@@ -21,7 +24,7 @@ namespace paylink
         uc::stm stm32;
         cb::BanknoteCallback banknote_callback{nullptr};
         com::scheduler scheduler;
-        std::unordered_map<int,std::size_t> led_pending_task_map;
+        std::unordered_map<int, std::size_t> led_pending_task_map;
         int TotalAmountRead{};
         int StartTotalAmountRead{};
         struct sensors_t
@@ -37,6 +40,29 @@ namespace paylink
         sensors_t sensors;
         std::mutex mtx_dispense_coins;
         std::mutex mtx_set_motor;
+        struct ConfigT
+        {
+            struct LoggerT
+            {
+                mik::LogLevel level{mik::LogLevel::INFO};
+                bool standard_out{false};
+                std::optional<std::string> file_path{};
+            } logger;
+            struct module_t
+            {
+                enum class ModType
+                {
+                    ENABLED,
+                    DISABLED,
+                    STUB
+                };
+                ModType paylink{};
+                ModType acceptor{};
+                ModType dispenser{};
+                ModType pn532{};
+                ModType stm{};
+            } module;
+        } config;
         bool init();
         void update_banknote();
         void update_event();
@@ -45,11 +71,8 @@ namespace paylink
         // uint32_t TotalAmountPaid{};
         // uint32_t StartTotalAmountPaid{};
     public:
-    
-        // watch abi talk
         // fill calbacks for all calls
         // test nfc reader phisically
-        // TODO: think through if we need some configuration file for input mapings ??
         system() = delete;
         system(std::string_view config_path);
         /* ASYNC */
