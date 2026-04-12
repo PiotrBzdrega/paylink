@@ -4,7 +4,7 @@
 #include <nfc/nfc.h>
 #include <nfc/nfc-types.h>
 #include "BS_thread_pool.hpp"
-#include "callbacks.h"
+#include "paylink/callbacks.h"
 
 namespace nfc
 {
@@ -15,12 +15,12 @@ namespace nfc
         nfc_context *context{};
         BS::thread_pool<>& pool;
         std::jthread poll_thread;
-        void poll_task(std::stop_token stop_token, cb::CardDetectionCallback cb);
+        void poll_task(std::stop_token stop_token, CardDetectionCallback cb);
 
     public:
         // not necessary to check tty. It is set manually in /etc/nfc/libnfc.conf "pn532_uart:/dev/ttyUSB0"
         pn532(BS::thread_pool<>& pool_);
-        int poll(cb::CardDetectionCallback cb);
+        int poll(CardDetectionCallback cb);
         ~pn532();
     };
 

@@ -156,22 +156,22 @@ namespace paylink
         }
     }
 
-    void system::set_new_banknote_callback(cb::BanknoteCallback func)
+    void system::set_new_banknote_callback(BanknoteCallback func)
     {
         banknote_callback = func;
     }
 
-    int system::set_card_detected_callback(cb::CardDetectionCallback func)
+    int system::set_card_detected_callback(CardDetectionCallback func)
     {
         return nfc_reader.poll(func);
     }
 
-    void system::set_buttons_state_change_callback(cb::ButtonsChangeCallback func)
+    void system::set_buttons_state_change_callback(ButtonsChangeCallback func)
     {
         sensors.buttons_callback = func;
     }
 
-    void system::set_sensors_state_change_callback(cb::SignalChangeCallback func)
+    void system::set_sensors_state_change_callback(SignalChangeCallback func)
     {
         stm32.set_sensors_state_change_callback(func);
     }
@@ -395,10 +395,12 @@ namespace paylink
 
         int postpay_paid{};
         int postpay_dispensed_coins{};
+        int counter{};
 
         int pay_st{};
         do
         {
+            counter++;
             std::this_thread::sleep_for(500ms);
             auto postpay_prom = std::promise<int>{};
             auto postpay_fut = postpay_prom.get_future();
@@ -411,7 +413,8 @@ namespace paylink
                                     prom.set_value(st); });
             /* Wait for post payment */
             pay_st = postpay_fut.get();
-        } while (pay_st == PAY_ONGOING);
+            mik::logger::info("Payout counter {}, status: {}", counter, pay_st);
+        } while (pay_st == PAY_ONGOING && counter < 20); // Add a limit to the number of iterations
 
         if (pay_st != PAY_FINISHED)
         {

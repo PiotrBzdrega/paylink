@@ -18,3 +18,16 @@ for (;;)
     
 }
 ```
+* install
+```shell
+sudo cmake --build /home/dev/Sources/paylink-app/build --config Debug --target install -j 1 --
+[sudo] password for dev: 
+[ 85%] Built target paylink
+[100%] Built target paylink_example
+Install the project...
+-- Install configuration: "Debug"
+-- Installing: /usr/local/lib/libpaylink.so.0.3.0
+-- Installing: /usr/local/lib/libpaylink.so.0
+-- Installing: /usr/local/lib/libpaylink.so
+-- Installing: /usr/local/include/paylink/paylink_c_api.h
+```

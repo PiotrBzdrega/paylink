@@ -15,7 +15,7 @@ namespace nfc
         return str;
     }
 
-    void pn532::poll_task(std::stop_token stop_token, cb::CardDetectionCallback cb)
+    void pn532::poll_task(std::stop_token stop_token, CardDetectionCallback cb)
     {
         // TODO: integrate timeout_sec
         while (stop_token.stop_requested() == false)
@@ -56,9 +56,9 @@ namespace nfc
                  * @param pnd \a nfc_device struct pointer that represent currently used device
                  * @param pnmModulations desired modulations
                  * @param szModulations size of \a pnmModulations
-                 * @param uiPollNr specifies the number of polling (0x01 – 0xFE: 1 up to 254 polling, 0xFF: Endless polling)
+                 * @param uiPollNr specifies the number of polling (0x01 ï¿½ 0xFE: 1 up to 254 polling, 0xFF: Endless polling)
                  * @note one polling is a polling for each desired target type
-                 * @param uiPeriod indicates the polling period in units of 150 ms (0x01 – 0x0F: 150ms – 2.25s)
+                 * @param uiPeriod indicates the polling period in units of 150 ms (0x01 ï¿½ 0x0F: 150ms ï¿½ 2.25s)
                  * @note e.g. if uiPeriod=10, it will poll each desired target type during 1.5s
                  * @param[out] pnt pointer on \a nfc_target (over)writable struct
                  */
@@ -112,7 +112,7 @@ namespace nfc
         }
     }
 
-    int pn532::poll(cb::CardDetectionCallback cb)
+    int pn532::poll(CardDetectionCallback cb)
     {
         if (poll_thread.joinable()) // check if previous thread ended
         {

@@ -462,7 +462,8 @@ namespace paylink
                 break;
             }
 
-            std::println("IMHEI open state - [{}] {} \n{}", value, description,
+
+            mik::logger::trace("IMHEI open state - [{}] {} \n{}", value, description,
                          exit ? "exit application" : retry ? "retry OpenMHE after 20s"
                                                            : "");
             if (exit)

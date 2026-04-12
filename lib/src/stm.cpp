@@ -276,7 +276,7 @@ namespace uc
     {
         return std::string(TEST_REQ);
     }
-    void stm::set_sensors_state_change_callback(cb::SignalChangeCallback func)
+    void stm::set_sensors_state_change_callback(SignalChangeCallback func)
     {
         signal_change_callback = func;
     }

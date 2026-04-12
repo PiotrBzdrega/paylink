@@ -6,7 +6,7 @@
 #include <future>
 #include "BS_thread_pool.hpp"
 #include "thread_safe_queue.h"
-#include "callbacks.h"
+#include "paylink/callbacks.h"
 
 namespace uc
 {
@@ -14,7 +14,7 @@ namespace uc
     {
     private:
         // TODO: signals state from stm should be stored, and compared during async from stm, execute callback if they are different for now use std::string, can be replace with std::array
-        cb::SignalChangeCallback signal_change_callback{nullptr};
+        SignalChangeCallback signal_change_callback{nullptr};
         std::string signals;
         std::jthread irq_thr;
         std::jthread sync_thr;
@@ -42,7 +42,7 @@ namespace uc
         std::string get_signals_req();
         std::string set_signal_req();
         std::string test_req();
-        void set_sensors_state_change_callback(cb::SignalChangeCallback func);
+        void set_sensors_state_change_callback(SignalChangeCallback func);
         int run_communication();
     };
 
