@@ -5,8 +5,11 @@
 int main()
 {
     printf("Hello, Paylink!\n");
-    void *a = createPaylinkSystem("/home/dev/Sources/paylink-app/example/configuration.toml");
-    int result = dispenseCoins(a, 100);
+    if(createPaylinkSystem("/home/dev/Sources/paylink-app/example/configuration.toml") != 0) {
+        printf("Failed to create Paylink system\n");
+        return 1;
+    }
+    int result = dispenseCoins(100);
     if (result != 0) {
         printf("Failed to dispense coins, error code: %d\n", result);
     } else {
@@ -14,6 +17,6 @@ int main()
     }
     sleep(5);
 
-    destroyPaylinkSystem(a);
+    destroyPaylinkSystem();
     return 0;
 }

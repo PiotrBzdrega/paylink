@@ -1,64 +1,73 @@
 #include "paylink/paylink_c_api.h"
 #include "system.h"
+
+static std::unique_ptr<paylink::system> handle;
+
 extern "C"
 {
-    PaylinkHandle createPaylinkSystem(const char *config_path)
-    {
-        try
-        {
-            return new paylink::system(config_path);
-        }
-        catch (const std::exception &e)
-        {
-            mik::logger::error("Failed to create system: {}", e.what());
-            return nullptr;
-        }
-    }
-
-    void destroyPaylinkSystem(PaylinkHandle handle)
-    {
-        delete static_cast<paylink::system*>(handle);
-    }
-
-    const char *getVersion(PaylinkHandle handle)
+    int createPaylinkSystem(const char *config_path)
     {
         if (handle)
         {
-            return static_cast<paylink::system*>(handle)->version().c_str();
+            return 0; // System already created
+        }
+        
+        try
+        {
+            handle = std::make_unique<paylink::system>(config_path);
+            return 0; // System created successfully
+        }
+        catch (const std::exception &e)
+        {
+            std::println("Failed to create system: {}", e.what());
+            return -1;
+        }
+    }
+
+    void destroyPaylinkSystem()
+    {
+        handle.reset(); // This will call the destructor of paylink::system
+    }
+
+    const char *getVersion()
+    {
+        if (handle)
+        {
+            return handle->version().c_str();
         }
         return nullptr;
     }
 
-    void setnewBanknoteCallback(PaylinkHandle handle, BanknoteCallback func)
+    void setnewBanknoteCallback(BanknoteCallback func)
     {
         if (handle)
         {
-            static_cast<paylink::system*>(handle)->set_new_banknote_callback(func);
+            handle->set_new_banknote_callback(func);
         }
     }
 
-    int setCardDetectedCallback(PaylinkHandle handle, CardDetectionCallback func)
+    int setCardDetectedCallback(CardDetectionCallback func)
     {
         if (handle)
         {
-            return static_cast<paylink::system*>(handle)->set_card_detected_callback(func);
+            return handle->set_card_detected_callback(func);
         }
         return -1;
     }
 
-    void setButtonsStateChangeCallback(PaylinkHandle handle, ButtonsChangeCallback func)
+    void setButtonsStateChangeCallback(ButtonsChangeCallback func)
     {
         if (handle)
         {
-            static_cast<paylink::system*>(handle)->set_buttons_state_change_callback(func);
+            handle->set_buttons_state_change_callback(func);
         }
     }
 
-    void setSensorsStateChangeCallback(PaylinkHandle handle, SignalChangeCallback func)
+    void setSensorsStateChangeCallback(SignalChangeCallback func)
     {
         if (handle)
         {
-            static_cast<paylink::system*>(handle)->set_sensors_state_change_callback(func);
+            handle->set_sensors_state_change_callback(func);
         }
     }
 
@@ -70,64 +79,64 @@ extern "C"
     //     }
     // }
 
-    int dispenseCoins(PaylinkHandle handle, uint32_t amount)
+    int dispenseCoins(uint32_t amount)
     {
         if (handle)
         {
-            return static_cast<paylink::system*>(handle)->dispense_coins(amount);
+            return handle->dispense_coins(amount);
         }
         return -1;
     }
 
-    uint16_t getButtonsState(PaylinkHandle handle)
+    uint16_t getButtonsState()
     {
         if (handle)
         {
-            return static_cast<paylink::system*>(handle)->get_buttons_state();
+            handle->get_buttons_state();
         }
         return 0;
     }
 
-    const char *getSensorsState(PaylinkHandle handle)
+    const char *getSensorsState()
     {
         if (handle)
         {
-            static std::string sensors_state = static_cast<paylink::system*>(handle)->get_sensors_state();
+            static std::string sensors_state = handle->get_sensors_state();
             return sensors_state.c_str();
         }
         return nullptr;
     }
 
-    void setLED(PaylinkHandle handle, int number, bool on, uint32_t interval_ms)
+    void setLED(int number, bool on, uint32_t interval_ms)
     {
         if (handle)
         {
-            static_cast<paylink::system*>(handle)->set_led(number, on, interval_ms);
+            handle->set_led(number, on, interval_ms);
         }
     }
 
-    void setMotor(PaylinkHandle handle, bool on, uint32_t ms)
+    void setMotor(bool on, uint32_t ms)
     {
         if (handle)
         {
-            static_cast<paylink::system*>(handle)->set_motor(on, ms);
+            handle->set_motor(on, ms);
         }
     }
 
-    int levelOfCoins(PaylinkHandle handle)
+    int levelOfCoins()
     {
         if (handle)
         {
-            return static_cast<paylink::system*>(handle)->level_of_coins();
+            return handle->level_of_coins();
         }
         return -1;
     }
 
-    int currentCredit(PaylinkHandle handle)
+    int currentCredit()
     {
         if (handle)
         {
-            return static_cast<paylink::system*>(handle)->current_credit();
+            return handle->current_credit();
         }
         return -1;
     }
