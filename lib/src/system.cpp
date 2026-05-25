@@ -113,7 +113,7 @@ namespace
 
 namespace paylink
 {
-    system::system(std::string_view config_path) : nfc_reader(pool), stm32(pool), sensors(pool)
+    system::system(std::string_view config_path, LoggerCallback func) : nfc_reader(pool), stm32(pool), sensors(pool)
     {
         read_configuration(config_path);
         /* Logger */
@@ -122,6 +122,7 @@ namespace paylink
             log_file.open(*config.logger.file_path, std::ios::out | std::ios::app);
         }
         mik::logger::setup(config.logger.standard_out, log_file.is_open() ? &log_file : nullptr, config.logger.level);
+        mik::logger::set_external_callback(func);
 
         if (init())
         {
@@ -153,6 +154,12 @@ namespace paylink
             //     // TODO: how to handle paylink DisableInterface if exception thrown
             //     throw std::runtime_error("Dispenser setup failed");
             // }
+            validInstance = true;
+        }
+        else
+        {
+            validInstance = false;
+            mik::logger::error("Failed to initialize Paylink system");
         }
     }
 
@@ -174,6 +181,11 @@ namespace paylink
     void system::set_sensors_state_change_callback(SignalChangeCallback func)
     {
         stm32.set_sensors_state_change_callback(func);
+    }
+
+    void system::set_logger_callback(LoggerCallback func)
+    {
+        mik::logger::set_external_callback(func);
     }
 
     bool system::init()
@@ -438,7 +450,7 @@ namespace paylink
         /* Post payment Task */
         scheduler.submit_task([this, prom = std::move(prom)]() mutable
                               { prom.set_value(sensors.get_buttons_state(true)); });
-                              //TODO: what if get_buttons_state is called with fault
+        // TODO: what if get_buttons_state is called with fault
 
         return fut.get();
     }
@@ -554,7 +566,7 @@ namespace paylink
         for (int i : std::views::iota(0, INPUTS_LEN))
         {
             /* OPEN */
-            //TODO: what paylink will be turned off, how does it affect Commands like SwitchOpens, SwitchCloses
+            // TODO: what paylink will be turned off, how does it affect Commands like SwitchOpens, SwitchCloses
             auto new_open_counter = SwitchOpens(i);
             if (open_counter[i] != new_open_counter)
             {

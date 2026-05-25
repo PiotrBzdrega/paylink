@@ -4,13 +4,14 @@
 extern "C"
 {
 #endif
-    int createPaylinkSystem(const char *config_path);
+    int createPaylinkSystem(const char *config_path, LoggerCallback func);
     void destroyPaylinkSystem();
     const char *getVersion();
     void setnewBanknoteCallback(BanknoteCallback func);
     int setCardDetectedCallback(CardDetectionCallback func);
     void setButtonsStateChangeCallback(ButtonsChangeCallback func);
     void setSensorsStateChangeCallback(SignalChangeCallback func);
+    void setLoggerCallback(LoggerCallback func);
     int dispenseCoins(uint32_t amount);
     uint16_t getButtonsState();
     const char *getSensorsState();

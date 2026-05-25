@@ -1,7 +1,7 @@
 [logger]
 # TRACE, DEBUG, INFO, ERROR, NONE
 level = "TRACE" 
-stdout = true
+stdout = false
 # file = "/tmp/paylink.log"
 
 [module]

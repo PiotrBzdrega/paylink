@@ -5,6 +5,11 @@ namespace com
 {
     void scheduler::worker(std::stop_token st)
     {
+
+        /* Can happen that cv will wait endlessly if there is no messages but worker must be stopped */
+        std::stop_callback stop_cb(st, [this]()
+                                   { cv.notify_one(); });
+
         while (!st.stop_requested())
         {
 

@@ -11,6 +11,8 @@ extern "C"
     typedef void (*SignalChangeCallback)(const char *view);
     typedef void (*ButtonsChangeCallback)(const uint16_t state, const uint16_t open_edge, const uint16_t close_edge);
     typedef void (*CardDetectionCallback)(const char *uid);
+    typedef void (*LoggerCallback)(const char *msg);
+
     /*
      TODO: consider struct with more info
         timeout happend or error

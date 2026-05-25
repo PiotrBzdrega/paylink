@@ -25,7 +25,12 @@ message(STATUS "lib path=${AES_LIB}")
 add_library(${PROJECT_NAME} SHARED)
 
 # Include directories for headers
-target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(${PROJECT_NAME}
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+        # PUBLIC
+        #     ${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}
+    )
 
 # Specify the directory containing your source files
 file(GLOB SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")

@@ -27,6 +27,7 @@ namespace paylink
         std::unordered_map<int, std::size_t> led_pending_task_map;
         int TotalAmountRead{};
         int StartTotalAmountRead{};
+        bool validInstance{};
         struct sensors_t
         {
             explicit sensors_t(BS::thread_pool<> &pool_) : pool(pool_) {};
@@ -74,12 +75,13 @@ namespace paylink
         // fill calbacks for all calls
         // test nfc reader phisically
         system() = delete;
-        system(std::string_view config_path);
+        system(std::string_view config_path, LoggerCallback func = nullptr);
         /* ASYNC */
         void set_new_banknote_callback(BanknoteCallback func);
         int set_card_detected_callback(CardDetectionCallback func);
         void set_buttons_state_change_callback(ButtonsChangeCallback func);
         void set_sensors_state_change_callback(SignalChangeCallback func);
+        void set_logger_callback(LoggerCallback func);
         void set_error_event_callback(ErrorEventCallback func);
         // set callbacks and pass requests to endpoint classes
         /* SYNC */
@@ -92,6 +94,7 @@ namespace paylink
         std::string version();
         int level_of_coins();
         int current_credit();
+        bool isInstanceValid() const { return validInstance; }
         ~system();
     };
 }

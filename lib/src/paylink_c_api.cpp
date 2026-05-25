@@ -5,16 +5,22 @@ static std::unique_ptr<paylink::system> handle;
 
 extern "C"
 {
-    int createPaylinkSystem(const char *config_path)
+    int createPaylinkSystem(const char *config_path, LoggerCallback func)
     {
         if (handle)
         {
             return 0; // System already created
         }
-        
+
         try
         {
-            handle = std::make_unique<paylink::system>(config_path);
+            handle = std::make_unique<paylink::system>(config_path, func);
+            if (!handle->isInstanceValid())
+            {
+                destroyPaylinkSystem();
+                return -1; // Failed to create system
+            }
+
             return 0; // System created successfully
         }
         catch (const std::exception &e)
@@ -71,6 +77,14 @@ extern "C"
         }
     }
 
+    void setLoggerCallback(LoggerCallback func)
+    {
+        if (handle)
+        {
+            // Assuming you have a method in your system class to set the logger callback
+            handle->set_logger_callback(func);
+        }
+    }
     // void setErrorEventCallback(PaylinkHandle *handle, ErrorEventCallback func)
     // {
     //     if (handle)
@@ -140,5 +154,4 @@ extern "C"
         }
         return -1;
     }
-
 }
