@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/stat.h>   // <-- fchmod
+#include <sys/stat.h> // <-- fchmod
 #include "paylink/paylink_c_api.h"
 
 char *createConfiguration()
@@ -86,16 +86,83 @@ int main()
 
     free(path);
 
-    int result = dispenseCoins(100);
-    if (result != 0)
+    int choice;
+
+    const char *commands[] = {
+        "dispenseCoins(100)",
+        "dispenseCoins(200)",
+        "setMotor(true, 0)",
+        "setMotor(false, 0)",
+        "setMotor(true, 3000)",
+        "setLED(1, true, 0)",
+        "setLED(1, false, 0)",
+        "setLED(1, true, 1000)",
+        "levelOfCoins()",
+        "currentCredit()",
+        "getSensorsState()",
+        "getButtonsState()",
+        "Exit"};
+
+    size_t command_size = sizeof(commands) / sizeof(commands[0]);
+    while (1)
     {
-        printf("Failed to dispense coins, error code: %d\n", result);
+        printf("\n=== Menu ===\n");
+        for (int i = 0; i < command_size; i++)
+        {
+            printf("%d - %s\n", i, commands[i]);
+        }
+        printf("Enter choice: ");
+
+        while (scanf("%d", &choice) == 0)
+        {
+            printf("Invalid input\n");
+            // while (getchar() != '\n'); // Clear the input buffer
+        }
+
+        switch (choice)
+        {
+        case 0:
+        {
+            printf("%s...\n", commands[choice]);
+            int result = dispenseCoins(100);
+            if (result == -1)
+            {
+                printf("Failed to dispense coins, error code: %d\n", result);
+            }
+            else
+            {
+                printf(" %d Coins dispensed successfully!\n", result);
+            }
+        }
+        break;
+        case 1:
+        {
+            printf("%s...\n", commands[choice]);
+            int result = dispenseCoins(200);
+            if (result == -1)
+            {
+                printf("Failed to dispense coins, error code: %d\n", result);
+            }
+            else
+            {
+                printf(" %d Coins dispensed successfully!\n", result);
+            }
+        }
+        break;
+        case 2:
+        {
+            printf("%s...\n", commands[choice]);
+        }
+        break;
+        }
     }
-    else
-    {
-        printf("Coins dispensed successfully!\n");
-    }
+    sleep(2);
+
+    
+
     sleep(5);
+    
+    sleep(2);
 
     destroyPaylinkSystem();
     return 0;
