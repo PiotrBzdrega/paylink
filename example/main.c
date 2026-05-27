@@ -89,6 +89,7 @@ int main()
     int choice;
 
     const char *commands[] = {
+        "getVersion()",
         "dispenseCoins(100)",
         "dispenseCoins(200)",
         "setMotor(true, 0)",
@@ -104,7 +105,8 @@ int main()
         "Exit"};
 
     size_t command_size = sizeof(commands) / sizeof(commands[0]);
-    while (1)
+    int run{1};
+    while (run)
     {
         printf("\n=== Menu ===\n");
         for (int i = 0; i < command_size; i++)
@@ -124,21 +126,21 @@ int main()
         case 0:
         {
             printf("%s...\n", commands[choice]);
-            int result = dispenseCoins(100);
-            if (result == -1)
+            const char* ver = getVersion();
+            if(ver != NULL)
             {
-                printf("Failed to dispense coins, error code: %d\n", result);
+                printf("Version: %s\n", ver);
             }
             else
             {
-                printf(" %d Coins dispensed successfully!\n", result);
+                printf("Invalid version:\n");
             }
         }
         break;
         case 1:
         {
             printf("%s...\n", commands[choice]);
-            int result = dispenseCoins(200);
+            int result = dispenseCoins(100);
             if (result == -1)
             {
                 printf("Failed to dispense coins, error code: %d\n", result);
@@ -152,16 +154,96 @@ int main()
         case 2:
         {
             printf("%s...\n", commands[choice]);
+            int result = dispenseCoins(200);
+            if (result == -1)
+            {
+                printf("Failed to dispense coins, error code: %d\n", result);
+            }
+            else
+            {
+                printf(" %d Coins dispensed successfully!\n", result);
+            }
+        }
+        break;
+        case 3:
+        {
+            printf("%s...\n", commands[choice]);
+            setMotor(true, 0);
+        }
+        break;
+        case 4:
+        {
+            printf("%s...\n", commands[choice]);
+            setMotor(false, 0);
+        }
+        break;
+        case 5:
+        {
+            printf("%s...\n", commands[choice]);
+            setMotor(true, 3000);
+        }
+        break;
+        case 6:
+        {
+            printf("%s...\n", commands[choice]);
+            setLED(1, true, 0);
+        }
+        break;
+        case 7:
+        {
+            printf("%s...\n", commands[choice]);
+            setLED(1, false, 0);
+        }
+        break;
+        case 8:
+        {
+            printf("%s...\n", commands[choice]);
+            setLED(1, true, 1000);
+        }
+        break;
+        case 9:
+        {
+            printf("%s...\n", commands[choice]);
+            int lvl = levelOfCoins();
+            printf("Level of coins %d \n", lvl);
+        }
+        break;
+        case 10:
+        {
+            printf("%s...\n", commands[choice]);
+            int credit = currentCredit();
+            printf("Current credit %d \n", credit);
+        }
+        break;
+        case 11:
+        {
+            printf("%s...\n", commands[choice]);
+            const char* sensors = getSensorsState();
+            if(sensors != NULL)
+            {
+                printf("Sensors state: %s\n", sensors);
+            }
+            else
+            {
+                printf("Invalid Sensors state:\n");
+            }
+        }
+        case 12:
+        {
+            printf("%s...\n", commands[choice]);
+            uint16_t buttons = getButtonsState();
+            printf("Buttons state: %s\n", buttons);
+        }
+        break;
+        case 13:
+        {
+            printf("%s...\n", commands[choice]);
+            run = 0;
         }
         break;
         }
     }
-    sleep(2);
 
-    
-
-    sleep(5);
-    
     sleep(2);
 
     destroyPaylinkSystem();

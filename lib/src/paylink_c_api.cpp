@@ -106,7 +106,7 @@ extern "C"
     {
         if (handle)
         {
-            handle->get_buttons_state();
+            return handle->get_buttons_state();
         }
         return 0;
     }
