@@ -1,5 +1,6 @@
 #include "paylink/paylink_c_api.h"
 #include "system.h"
+#include "paylink_c_api.h"
 
 static std::unique_ptr<paylink::system> handle;
 
@@ -77,14 +78,45 @@ extern "C"
         }
     }
 
-    void setLoggerCallback(LoggerCallback func)
+    // void setLoggerCallback(LoggerCallback func)
+    // {
+    //     if (handle)
+    //     {
+    //         // Assuming you have a method in your system class to set the logger callback
+    //         handle->set_logger_callback(func);
+    //     }
+    // }
+
+    void setnewBanknoteCallbackCtx(BanknoteCallback func, void *user_data)
+    {
+        if (handle)
+        {
+            handle->set_new_banknote_callback(func,user_data);
+        }
+    }
+
+    int setCardDetectedCallbackCtx(CardDetectionCallback func, void *user_data)
+    {
+        return 0;
+    }
+
+    void setButtonsStateChangeCallbackCtx(ButtonsChangeCallback func, void *user_data)
+    {
+    }
+
+    void setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data)
+    {
+    }
+
+    void setLoggerCallbackCtx(LoggerCallback func, void *user_data)
     {
         if (handle)
         {
             // Assuming you have a method in your system class to set the logger callback
-            handle->set_logger_callback(func);
+            handle->set_logger_callback(func, user_data);
         }
     }
+
     // void setErrorEventCallback(PaylinkHandle *handle, ErrorEventCallback func)
     // {
     //     if (handle)

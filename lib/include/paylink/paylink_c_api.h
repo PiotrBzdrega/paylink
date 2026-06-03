@@ -11,7 +11,14 @@ extern "C"
     int setCardDetectedCallback(CardDetectionCallback func);
     void setButtonsStateChangeCallback(ButtonsChangeCallback func);
     void setSensorsStateChangeCallback(SignalChangeCallback func);
-    void setLoggerCallback(LoggerCallback func);
+    // void setLoggerCallback(LoggerCallback func);
+
+    void setnewBanknoteCallbackCtx(BanknoteCallback func, void *user_data);
+    int setCardDetectedCallbackCtx(CardDetectionCallback func, void *user_data);
+    void setButtonsStateChangeCallbackCtx(ButtonsChangeCallback func, void *user_data);
+    void setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data);
+    void setLoggerCallbackCtx(LoggerCallback func, void *user_data);
+
     int dispenseCoins(uint32_t amount);
     uint16_t getButtonsState();
     const char *getSensorsState();

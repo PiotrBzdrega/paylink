@@ -77,12 +77,12 @@ namespace paylink
         system() = delete;
         system(std::string_view config_path, LoggerCallback func = nullptr);
         /* ASYNC */
-        void set_new_banknote_callback(BanknoteCallback func);
-        int set_card_detected_callback(CardDetectionCallback func);
-        void set_buttons_state_change_callback(ButtonsChangeCallback func);
-        void set_sensors_state_change_callback(SignalChangeCallback func);
-        void set_logger_callback(LoggerCallback func);
-        void set_error_event_callback(ErrorEventCallback func);
+        void set_new_banknote_callback(BanknoteCallback func, void *user_data = nullptr);
+        int set_card_detected_callback(CardDetectionCallback func, void *user_data = nullptr);
+        void set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data = nullptr);
+        void set_sensors_state_change_callback(SignalChangeCallback func, void *user_data = nullptr);
+        void set_logger_callback(LoggerCallback func, void *user_data = nullptr);
+        void set_error_event_callback(ErrorEventCallback func, void *user_data = nullptr);
         // set callbacks and pass requests to endpoint classes
         /* SYNC */
         int

@@ -79,7 +79,12 @@ namespace mik
         static inline std::mutex s_mutex;              // Thread safety
         static inline std::ofstream *outstream{nullptr};
         static inline bool standard_output{};
-        static inline void(*external_callback)(const char*) {nullptr}; // Optional external callback for log messages
+        // static inline void (*external_callback)(const char *){nullptr}; // Optional external callback for log messages
+        static inline struct CallbackCtx
+        {
+            void (*callback)(const char *, void *){nullptr};
+            void *user_data;
+        } callback_ctx;
         template <class... Args>
         static void log(LogLevel lvl, format_string_with_location<Args...> fmt, Args &&...args)
         {
@@ -122,11 +127,10 @@ namespace mik
                     std::println("{}", message);
                 }
 
-                if (external_callback)
+                if (callback_ctx.callback)
                 {
-                    external_callback(message.c_str());
+                    callback_ctx.callback(message.c_str(), callback_ctx.user_data);
                 }
-                
             }
         }
 
@@ -176,10 +180,11 @@ namespace mik
             std::scoped_lock lock{s_mutex};
             standard_output = std_output;
         }
-        static void set_external_callback(void(*callback)(const char*))
+        static void set_external_callback(void (*callback)(const char *, void *), void *user_data = nullptr)
         {
             std::scoped_lock lock{s_mutex};
-            external_callback = callback;
+            callback_ctx.callback = callback;
+            callback_ctx.user_data = user_data;
         }
     };
 }

@@ -163,7 +163,7 @@ namespace paylink
         }
     }
 
-    void system::set_new_banknote_callback(BanknoteCallback func)
+    void system::set_new_banknote_callback(BanknoteCallback func, void *user_data)
     {
         banknote_callback = func;
     }
@@ -183,9 +183,9 @@ namespace paylink
         stm32.set_sensors_state_change_callback(func);
     }
 
-    void system::set_logger_callback(LoggerCallback func)
+    void system::set_logger_callback(LoggerCallback func, void *user_data)
     {
-        mik::logger::set_external_callback(func);
+        mik::logger::set_external_callback(func, user_data);
     }
 
     bool system::init()

@@ -15,7 +15,7 @@ namespace nfc
         return str;
     }
 
-    void pn532::poll_task(std::stop_token stop_token, CardDetectionCallback cb)
+    void pn532::poll_task(std::stop_token stop_token, CardDetectionCallbackCtx cb_ctx)
     {
         // TODO: integrate timeout_sec
         while (stop_token.stop_requested() == false)
