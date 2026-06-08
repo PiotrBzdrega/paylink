@@ -77,8 +77,8 @@ namespace nfc
                     auto target_info = print_nfc_target(&pnt, verbose);
                     // TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
                     //  so make sure so is it
-                    pool.detach_task([cb, target_info]()
-                                     { cb(target_info.data()); });
+                    pool.detach_task([cb_ctx, target_info]()
+                                     { cb_ctx.callback(target_info.data(), cb_ctx.user_data); });
                     mik::logger::debug("Waiting for card removing...");
                     fflush(stdout);
                     while (0 == nfc_initiator_target_is_present(pnd, NULL))
@@ -90,8 +90,8 @@ namespace nfc
                 else
                 {
                     mik::logger::debug("No target found.\n");
-                    pool.detach_task([cb]()
-                                     { cb(""); });
+                    pool.detach_task([cb_ctx]()
+                                     { cb_ctx.callback("", cb_ctx.user_data); });
                 }
             }
         }
@@ -112,7 +112,7 @@ namespace nfc
         }
     }
 
-    int pn532::poll(CardDetectionCallback cb)
+    int pn532::poll(CardDetectionCallbackCtx cb_ctx)
     {
         if (poll_thread.joinable()) // check if previous thread ended
         {
@@ -122,7 +122,7 @@ namespace nfc
         else
         {
             /* jthread implicitly forward stop token to function, bind_front solves it */
-            poll_thread = std::jthread(std::bind_front(&pn532::poll_task, this), cb);
+            poll_thread = std::jthread(std::bind_front(&pn532::poll_task, this), cb_ctx);
             mik::logger::debug("Polling thread started");
             return 0;
         }

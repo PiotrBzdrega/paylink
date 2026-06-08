@@ -6,7 +6,7 @@
 #include "stm.h"
 #include "logger.h"
 #include "BS_thread_pool.hpp"
-#include "paylink/callbacks.h"
+#include "callback_context.h"
 #include "scheduler.h"
 
 // TODO: add thirdparty include directory to keep current version of only-header libraries
@@ -22,7 +22,7 @@ namespace paylink
         BS::thread_pool<> pool{4};
         nfc::pn532 nfc_reader;
         uc::stm stm32;
-        BanknoteCallback banknote_callback{nullptr};
+        BanknoteCallbackCtx banknote_cb_ctx;
         com::scheduler scheduler;
         std::unordered_map<int, std::size_t> led_pending_task_map;
         int TotalAmountRead{};
@@ -35,7 +35,7 @@ namespace paylink
             uint16_t state;
             std::array<int, INPUTS_LEN> open_counter;
             std::array<int, INPUTS_LEN> close_counter;
-            ButtonsChangeCallback buttons_callback{nullptr};
+            ButtonsChangeCallbackCtx buttons_cb_ctx;
             uint16_t get_buttons_state(bool notify_via_callback);
         };
         sensors_t sensors;
@@ -82,7 +82,7 @@ namespace paylink
         void set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data = nullptr);
         void set_sensors_state_change_callback(SignalChangeCallback func, void *user_data = nullptr);
         void set_logger_callback(LoggerCallback func, void *user_data = nullptr);
-        void set_error_event_callback(ErrorEventCallback func, void *user_data = nullptr);
+        // void set_error_event_callback(ErrorEventCallback func, void *user_data = nullptr);
         // set callbacks and pass requests to endpoint classes
         /* SYNC */
         int

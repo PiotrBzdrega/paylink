@@ -7,10 +7,10 @@ extern "C"
     int createPaylinkSystem(const char *config_path, LoggerCallback func);
     void destroyPaylinkSystem();
     const char *getVersion();
-    void setnewBanknoteCallback(BanknoteCallback func);
-    int setCardDetectedCallback(CardDetectionCallback func);
-    void setButtonsStateChangeCallback(ButtonsChangeCallback func);
-    void setSensorsStateChangeCallback(SignalChangeCallback func);
+    // void setnewBanknoteCallback(BanknoteCallback func);
+    // int setCardDetectedCallback(CardDetectionCallback func);
+    // void setButtonsStateChangeCallback(ButtonsChangeCallback func);
+    // void setSensorsStateChangeCallback(SignalChangeCallback func);
     // void setLoggerCallback(LoggerCallback func);
 
     void setnewBanknoteCallbackCtx(BanknoteCallback func, void *user_data);

@@ -1,6 +1,6 @@
 #include "paylink/paylink_c_api.h"
 #include "system.h"
-#include "paylink_c_api.h"
+// #include "paylink_c_api.h"
 
 static std::unique_ptr<paylink::system> handle;
 
@@ -45,67 +45,37 @@ extern "C"
         return nullptr;
     }
 
-    void setnewBanknoteCallback(BanknoteCallback func)
-    {
-        if (handle)
-        {
-            handle->set_new_banknote_callback(func);
-        }
-    }
-
-    int setCardDetectedCallback(CardDetectionCallback func)
-    {
-        if (handle)
-        {
-            return handle->set_card_detected_callback(func);
-        }
-        return -1;
-    }
-
-    void setButtonsStateChangeCallback(ButtonsChangeCallback func)
-    {
-        if (handle)
-        {
-            handle->set_buttons_state_change_callback(func);
-        }
-    }
-
-    void setSensorsStateChangeCallback(SignalChangeCallback func)
-    {
-        if (handle)
-        {
-            handle->set_sensors_state_change_callback(func);
-        }
-    }
-
-    // void setLoggerCallback(LoggerCallback func)
-    // {
-    //     if (handle)
-    //     {
-    //         // Assuming you have a method in your system class to set the logger callback
-    //         handle->set_logger_callback(func);
-    //     }
-    // }
-
     void setnewBanknoteCallbackCtx(BanknoteCallback func, void *user_data)
     {
         if (handle)
         {
-            handle->set_new_banknote_callback(func,user_data);
+            handle->set_new_banknote_callback(func, user_data);
         }
     }
 
     int setCardDetectedCallbackCtx(CardDetectionCallback func, void *user_data)
     {
-        return 0;
+        if (handle)
+        {
+            return handle->set_card_detected_callback(func, user_data);
+        }
+        return -1;
     }
 
     void setButtonsStateChangeCallbackCtx(ButtonsChangeCallback func, void *user_data)
     {
+        if (handle)
+        {
+            handle->set_buttons_state_change_callback(func, user_data);
+        }
     }
 
     void setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data)
     {
+        if (handle)
+        {
+            handle->set_sensors_state_change_callback(func, user_data);
+        }
     }
 
     void setLoggerCallbackCtx(LoggerCallback func, void *user_data)

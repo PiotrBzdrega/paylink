@@ -5,7 +5,7 @@
 #include <nfc/nfc-types.h>
 #include "BS_thread_pool.hpp"
 // #include "paylink/callbacks.h"
-#include "callbacks.h"
+#include "callback_context.h"
 
 namespace nfc
 {

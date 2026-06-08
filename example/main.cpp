@@ -120,17 +120,17 @@ char *createConfiguration()
     return strdup(filename); // caller must free();
 }
 
-void log_callback(const char *msg)
+void log_callback(const char *msg, void *user_data)
 {
     printf("Log: %s\n", msg);
 }
 
-void banknote_callback(int overall_val, int banknote_val)
+void banknote_callback(int overall_val, int banknote_val, void *user_data)
 {
     printf("Banknote inserted: overall value = %d, banknote value = %d\n", overall_val, banknote_val);
 }
 
-void card_detected_callback(const char *uid)
+void card_detected_callback(const char *uid, void *user_data)
 {
     printf("Card detected: card UID = %s\n", uid);
 }
@@ -244,15 +244,15 @@ int main()
     }
 
     printf("Hello, Paylink!\n");
-    if (createPaylinkSystem(path, log_callback) != 0)
+    if (createPaylinkSystem(path, log_callback) != 0) pass here user_datat for log_callback
     {
         printf("Failed to create Paylink system\n");
         free(path);
         return 1;
     }
 
-    setnewBanknoteCallback(banknote_callback);
-    setCardDetectedCallback(card_detected_callback); // Set card detection callback
+    setnewBanknoteCallbackCtx(banknote_callback,nullptr); // Set banknote callback
+    setCardDetectedCallbackCtx(card_detected_callback,nullptr); // Set card detection callback
 
     free(path);
 

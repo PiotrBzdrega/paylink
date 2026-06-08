@@ -80,11 +80,12 @@ namespace mik
         static inline std::ofstream *outstream{nullptr};
         static inline bool standard_output{};
         // static inline void (*external_callback)(const char *){nullptr}; // Optional external callback for log messages
-        static inline struct CallbackCtx
+        struct CallbackCtx
         {
-            void (*callback)(const char *, void *){nullptr};
-            void *user_data;
-        } callback_ctx;
+            void (*callback)(const char *, void *) = nullptr;
+            void *user_data = nullptr;
+        };
+        static inline CallbackCtx callback_ctx{nullptr, nullptr};
         template <class... Args>
         static void log(LogLevel lvl, format_string_with_location<Args...> fmt, Args &&...args)
         {

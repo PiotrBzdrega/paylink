@@ -165,22 +165,24 @@ namespace paylink
 
     void system::set_new_banknote_callback(BanknoteCallback func, void *user_data)
     {
-        banknote_callback = func;
+        banknote_cb_ctx.callback = func;
+        banknote_cb_ctx.user_data = user_data;
     }
 
-    int system::set_card_detected_callback(CardDetectionCallback func)
+    int system::set_card_detected_callback(CardDetectionCallback func, void *user_data)
     {
-        return nfc_reader.poll(func);
+        return nfc_reader.poll(CardDetectionCallbackCtx{func, user_data});
     }
 
-    void system::set_buttons_state_change_callback(ButtonsChangeCallback func)
+    void system::set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data)
     {
-        sensors.buttons_callback = func;
+        sensors.buttons_cb_ctx.callback = func;
+        sensors.buttons_cb_ctx.user_data = user_data;
     }
 
-    void system::set_sensors_state_change_callback(SignalChangeCallback func)
+    void system::set_sensors_state_change_callback(SignalChangeCallback func, void *user_data)
     {
-        stm32.set_sensors_state_change_callback(func);
+        stm32.set_sensors_state_change_callback(SignalChangeCallbackCtx{func, user_data});
     }
 
     void system::set_logger_callback(LoggerCallback func, void *user_data)
@@ -275,10 +277,10 @@ namespace paylink
             TotalAmountRead += new_banknote_read;
 
             /* Callback available ? */
-            if (banknote_callback)
+            if (banknote_cb_ctx.callback)
             {
                 pool.detach_task([this, new_banknote_read]
-                                 { banknote_callback(TotalAmountRead, new_banknote_read); });
+                                 { banknote_cb_ctx.callback(TotalAmountRead, new_banknote_read, banknote_cb_ctx.user_data); });
             }
         }
     }
@@ -599,10 +601,10 @@ namespace paylink
         /* Recognize if state or state edge has change */
         if (state_change | open_rise | close_rise)
         {
-            if (notify_via_callback && buttons_callback)
+            if (notify_via_callback && buttons_cb_ctx.callback)
             {
                 pool.detach_task([this, state_change, open_rise, close_rise]
-                                 { buttons_callback(state_change, open_rise, close_rise); });
+                                 { buttons_cb_ctx.callback(state_change, open_rise, close_rise, buttons_cb_ctx.user_data); });
             }
         }
         return state;

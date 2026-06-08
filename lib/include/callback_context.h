@@ -1,10 +1,10 @@
 #pragma once
-#include "callbacks.h"
+#include "paylink/callbacks.h"
 
 struct BanknoteCallbackCtx
 {
-    BanknoteCallback callback;
-    void *user_data;
+    BanknoteCallback callback{nullptr};
+    void *user_data{nullptr};
 };
 
 // struct ErrorEventCallbackCtx
@@ -15,20 +15,20 @@ struct BanknoteCallbackCtx
 
 struct SignalChangeCallbackCtx
 {
-    SignalChangeCallback callback;
-    void *user_data;
+    SignalChangeCallback callback{nullptr};
+    void *user_data{nullptr};
 };
 
 struct ButtonsChangeCallbackCtx
 {
-    ButtonsChangeCallback callback;
-    void *user_data;
+    ButtonsChangeCallback callback{nullptr};
+    void *user_data{nullptr};
 };
 
 struct CardDetectionCallbackCtx
 {
-    CardDetectionCallback callback;
-    void *user_data;
+    CardDetectionCallback callback{nullptr};
+    void *user_data{nullptr};
 };
 
 // struct LoggerCallbackCtx

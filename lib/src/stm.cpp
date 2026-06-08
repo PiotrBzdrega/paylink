@@ -157,12 +157,12 @@ namespace uc
                 /* It is not direct call, but signals states has change */
                 else if (signals_changed)
                 {
-                    if (signal_change_callback)
+                    if (signal_change_cb_ctx.callback)
                     {
                         std::string msg{rd_res.value().data(), rd_res.value().size()};
                         // TODO: forward real message not stub
                         pool.detach_task([this, msg = std::move(msg)]()
-                                         { signal_change_callback(msg.data()); });
+                                         { signal_change_cb_ctx.callback(msg.data(), signal_change_cb_ctx.user_data); });
                     }
                 }
                 /* Task completed */
@@ -276,9 +276,9 @@ namespace uc
     {
         return std::string(TEST_REQ);
     }
-    void stm::set_sensors_state_change_callback(SignalChangeCallback func)
+    void stm::set_sensors_state_change_callback(SignalChangeCallbackCtx cb_ctx)
     {
-        signal_change_callback = func;
+        signal_change_cb_ctx = cb_ctx;
     }
     int stm::run_communication()
     {
