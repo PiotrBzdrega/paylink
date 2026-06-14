@@ -12,7 +12,8 @@ using namespace std::chrono_literals;
 
 namespace
 {
-    std::string_view decode_event(int event)
+    std::string_view 
+    decode_event(int event)
     {
         switch (event)
         {
@@ -113,7 +114,7 @@ namespace
 
 namespace paylink
 {
-    system::system(std::string_view config_path, LoggerCallback func) : nfc_reader(pool), stm32(pool), sensors(pool)
+    system::system(std::string_view config_path, LoggerCallback func, void *user_data) : nfc_reader(pool), stm32(pool), sensors(pool)
     {
         read_configuration(config_path);
         /* Logger */
@@ -122,7 +123,7 @@ namespace paylink
             log_file.open(*config.logger.file_path, std::ios::out | std::ios::app);
         }
         mik::logger::setup(config.logger.standard_out, log_file.is_open() ? &log_file : nullptr, config.logger.level);
-        mik::logger::set_external_callback(func);
+        mik::logger::set_external_callback(func, user_data);
 
         if (init())
         {
@@ -163,34 +164,40 @@ namespace paylink
         }
     }
 
-    void system::set_new_banknote_callback(BanknoteCallback func, void *user_data)
+    void 
+    system::set_new_banknote_callback(BanknoteCallback func, void *user_data)
     {
         banknote_cb_ctx.callback = func;
         banknote_cb_ctx.user_data = user_data;
     }
 
-    int system::set_card_detected_callback(CardDetectionCallback func, void *user_data)
+    int 
+    system::set_card_detected_callback(CardDetectionCallback func, void *user_data)
     {
         return nfc_reader.poll(CardDetectionCallbackCtx{func, user_data});
     }
 
-    void system::set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data)
+    void 
+    system::set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data)
     {
         sensors.buttons_cb_ctx.callback = func;
         sensors.buttons_cb_ctx.user_data = user_data;
     }
 
-    void system::set_sensors_state_change_callback(SignalChangeCallback func, void *user_data)
+    void 
+    system::set_sensors_state_change_callback(SignalChangeCallback func, void *user_data)
     {
         stm32.set_sensors_state_change_callback(SignalChangeCallbackCtx{func, user_data});
     }
 
-    void system::set_logger_callback(LoggerCallback func, void *user_data)
+    void 
+    system::set_logger_callback(LoggerCallback func, void *user_data)
     {
         mik::logger::set_external_callback(func, user_data);
     }
 
-    bool system::init()
+    bool 
+    system::init()
     {
         if (auto state = utils::OpenMHEVersion(); state.first != SUCCESS)
         {
@@ -202,8 +209,8 @@ namespace paylink
             This value should be read following the call to OpenMHE and before the call to
             EnableInterface to establish a starting point before any coins or notes are read
         */
-        StartTotalAmountRead = TotalAmountRead = CurrentValue();
-        mik::logger::debug("Initial currency accepted = {} PLN", StartTotalAmountRead);
+        TotalAmountRead = CurrentValue();
+        mik::logger::debug("Initial currency accepted = {} PLN", TotalAmountRead);
 
         // StartTotalAmountPaid = TotalAmountPaid = CurrentPaid();
         auto StartTotalAmountPaid = CurrentPaid();
@@ -268,10 +275,11 @@ namespace paylink
         return true;
     }
 
-    void system::update_banknote()
+    void 
+    system::update_banknote()
     {
         /* Check if new banknote appears */
-        if (auto new_banknote_read = CurrentValue() - StartTotalAmountRead)
+        if (auto new_banknote_read = CurrentValue() - TotalAmountRead; new_banknote_read > 0)
         {
             /* Add to sum */
             TotalAmountRead += new_banknote_read;
@@ -285,7 +293,8 @@ namespace paylink
         }
     }
 
-    void system::update_event()
+    void 
+    system::update_event()
     {
         EventDetailBlock event_details;
         auto event = NextEvent(&event_details);
@@ -310,7 +319,8 @@ namespace paylink
         }
     }
 
-    void system::read_configuration(std::string_view config_path)
+    void 
+    system::read_configuration(std::string_view config_path)
     {
         auto configuration = toml::parse_file(config_path);
 
@@ -388,7 +398,8 @@ namespace paylink
         }
     }
 
-    int system::dispense_coins(uint32_t amount)
+    int 
+    system::dispense_coins(uint32_t amount)
     {
         /* This call must be exclusive to disallow concurrent calls */
         std::lock_guard<std::mutex> lck(mtx_dispense_coins);
@@ -445,7 +456,8 @@ namespace paylink
         }
     }
 
-    uint16_t system::get_buttons_state()
+    uint16_t 
+    system::get_buttons_state()
     {
         auto prom = std::promise<int>{};
         auto fut = prom.get_future();
@@ -457,13 +469,14 @@ namespace paylink
         return fut.get();
     }
 
-    std::string system::get_sensors_state()
+    std::string 
+    system::get_sensors_state()
     {
-        // TODO: reference to stm32
-        return std::string();
+        return stm32.get_signals_req();
     }
 
-    void system::set_led(int number, bool on, uint32_t interval_ms)
+    void 
+    system::set_led(int number, bool on, uint32_t interval_ms)
     {
         if (led_pending_task_map.contains(number))
         {
@@ -497,7 +510,8 @@ namespace paylink
         }
     }
 
-    void system::set_motor(bool on, uint32_t ms)
+    void 
+    system::set_motor(bool on, uint32_t ms)
     {
 
         /* This call must be exclusive to disallow concurrent calls */
@@ -524,12 +538,15 @@ namespace paylink
         }
     }
 
-    std::string system::version()
+    const char* 
+    system::version()
     {
-        return std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+        static const auto version_str = std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+        return version_str.c_str();
     }
 
-    int system::level_of_coins()
+    int 
+    system::level_of_coins()
     {
         auto prom = std::promise<int>{};
         auto fut = prom.get_future();
@@ -540,7 +557,8 @@ namespace paylink
         return fut.get();
     }
 
-    int system::current_credit()
+    int 
+    system::current_credit()
     {
         auto prom = std::promise<int>{};
         auto fut = prom.get_future();
@@ -560,7 +578,8 @@ namespace paylink
         DisableInterface();
         mik::logger::trace("DisableInterface");
     }
-    uint16_t system::sensors_t::get_buttons_state(bool notify_via_callback)
+    uint16_t 
+    system::sensors_t::get_buttons_state(bool notify_via_callback)
     {
         uint16_t new_state{};
         uint16_t open_rise{};

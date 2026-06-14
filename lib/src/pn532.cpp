@@ -30,7 +30,7 @@ namespace nfc
 
             mik::logger::info("NFC reader: {} opened\n", nfc_device_get_name(pnd));
 
-            while (stop_token.stop_requested() == false && pnd != nullptr)
+            while (stop_token.stop_requested() == false)
             {
                 /* Endless polling */
                 const uint8_t uiPollNr = 0xFF; // 20;
@@ -90,8 +90,8 @@ namespace nfc
                 else
                 {
                     mik::logger::debug("No target found.\n");
-                    pool.detach_task([cb_ctx]()
-                                     { cb_ctx.callback("", cb_ctx.user_data); });
+                    // pool.detach_task([cb_ctx]()
+                    //                  { cb_ctx.callback("", cb_ctx.user_data); });
                 }
             }
         }
@@ -140,6 +140,16 @@ namespace nfc
         {
             // TODO: check what happen when there is no blocking command like poll or init and we call abort
             nfc_abort_command(pnd);
+            // nfc_close(pnd);
+        }
+
+        if (poll_thread.joinable())
+        {
+            poll_thread.join();
+        }
+
+        if (pnd)
+        {
             nfc_close(pnd);
         }
 
@@ -148,10 +158,6 @@ namespace nfc
             nfc_exit(context);
         }
 
-        if (poll_thread.joinable())
-        {
-            poll_thread.join();
-        }
         mik::logger::trace("pn532 destructor end");
     }
 }

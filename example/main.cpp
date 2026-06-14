@@ -1,9 +1,11 @@
-#define _GNU_SOURCE
+// #define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <format>
+#include <mutex>
 #include <sys/stat.h> // <-- fchmod
 #include "paylink/paylink_c_api.h"
 #include <ftxui/component/component.hpp>
@@ -21,7 +23,10 @@ private:
     std::vector<T> container;
     MenuOption menuOption;
     Component menu;
+    ScreenInteractive &screen;
     const int visibleElements;
+    std::mutex mtx;
+
     void updateSelected()
     {
         if (autoScroll)
@@ -32,7 +37,7 @@ private:
 
 public:
     AdaptiveMenu() = delete;
-    AdaptiveMenu(int visibleElements) : visibleElements(visibleElements)
+    AdaptiveMenu(ScreenInteractive &screen, int visibleElements) : screen(screen), visibleElements(visibleElements)
     {
         menuOption.on_change = [this]()
         {
@@ -43,12 +48,15 @@ public:
 
     void addElement(const T &value)
     {
+        const std::lock_guard<std::mutex> lock(mtx);
         container.push_back(value);
         updateSelected();
+        screen.PostEvent(Event::Custom);
     }
 
     void clear()
     {
+        const std::lock_guard<std::mutex> lock(mtx);
         container.clear();
         selected = {};
         autoScroll = true;
@@ -80,7 +88,7 @@ char *createConfiguration()
         return NULL;
     }
 
-    printf("File created: %s\n", filename);
+    // printf("File created: %s\n", filename);
 
     /*
      * 0644:
@@ -122,20 +130,23 @@ char *createConfiguration()
 
 void log_callback(const char *msg, void *user_data)
 {
-    printf("Log: %s\n", msg);
+    auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
+    component->addElement(msg);
 }
 
 void banknote_callback(int overall_val, int banknote_val, void *user_data)
 {
-    printf("Banknote inserted: overall value = %d, banknote value = %d\n", overall_val, banknote_val);
+    auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
+    component->addElement(std::format("Banknote inserted: overall value = {}, banknote value = {}", overall_val, banknote_val));
 }
 
 void card_detected_callback(const char *uid, void *user_data)
 {
-    printf("Card detected: card UID = %s\n", uid);
+    auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
+    component->addElement(std::format("Card detected: card UID = {}", uid));
 }
 
-void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, int selectedCommand)
+void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, int selectedCommand, AdaptiveMenu<std::string> &log_menu)
 {
 
     if (commmandName[selectedCommand] == "getVersion()")
@@ -143,11 +154,11 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
         const char *ver = getVersion();
         if (ver != NULL)
         {
-            printf("Version: %s\n", ver);
+            log_menu.addElement(std::format("Version: {}", ver));
         }
         else
         {
-            printf("Invalid version:\n");
+            log_menu.addElement("Invalid app version:");
         }
     }
     else if (commmandName[selectedCommand] == "dispenseCoins(100)")
@@ -155,11 +166,11 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
         int result = dispenseCoins(100);
         if (result == -1)
         {
-            printf("Failed to dispense coins, error code: %d\n", result);
+            log_menu.addElement(std::format("Failed to dispense coins, error code: {}", result));
         }
         else
         {
-            printf(" %d Coins dispensed successfully!\n", result);
+            log_menu.addElement(std::format(" {} Coins dispensed successfully!", result));
         }
     }
     else if (commmandName[selectedCommand] == "dispenseCoins(200)")
@@ -167,11 +178,11 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
         int result = dispenseCoins(200);
         if (result == -1)
         {
-            printf("Failed to dispense coins, error code: %d\n", result);
+            log_menu.addElement(std::format("Failed to dispense coins, error code: {}", result));
         }
         else
         {
-            printf(" %d Coins dispensed successfully!\n", result);
+            log_menu.addElement(std::format(" {} Coins dispensed successfully!", result));
         }
     }
     else if (commmandName[selectedCommand] == "setMotor(true, 0)")
@@ -201,62 +212,77 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
     else if (commmandName[selectedCommand] == "levelOfCoins()")
     {
         int lvl = levelOfCoins();
-        printf("Level of coins %d \n", lvl);
+        log_menu.addElement(std::format("Level of coins: {}", lvl));
     }
     else if (commmandName[selectedCommand] == "currentCredit()")
     {
         int credit = currentCredit();
-        printf("Current credit %d \n", credit);
+        log_menu.addElement(std::format("Current credit: {}", credit));
     }
     else if (commmandName[selectedCommand] == "getSensorsState()")
     {
         const char *sensors = getSensorsState();
         if (sensors != NULL)
         {
-            printf("Sensors state: %s\n", sensors);
+            log_menu.addElement(std::format("Sensors state: {}", sensors));
         }
         else
         {
-            printf("Invalid Sensors state:\n");
+            log_menu.addElement("Invalid Sensors state:");
         }
+        freeString(sensors);
     }
     else if (commmandName[selectedCommand] == "getButtonsState()")
     {
         uint16_t buttons = getButtonsState();
-        printf("Buttons state: %d\n", buttons);
+        log_menu.addElement(std::format("Buttons state: {}", buttons));
     }
     else if (commmandName[selectedCommand] == "Exit")
     {
+        destroyPaylinkSystem();
+        destroy menus, to omit posting to screen after exiting
+         (since callbacks may still be called after exiting, but we want to avoid posting to screen
         screen.Exit();
     }
 }
 
 int main()
 {
-    auto callbackElements = AdaptiveMenu<std::string>(3);
-    auto log_menu = AdaptiveMenu<std::string>(10);
+    auto screen = ScreenInteractive::TerminalOutput();
+
+    auto callbackElements = AdaptiveMenu<std::string>(screen, 3);
+    auto log_menu = AdaptiveMenu<std::string>(screen, 10);
 
     char *path = createConfiguration();
     if (path == NULL)
     {
-        printf("Failed to create configuration\n");
+        log_menu.addElement("[EXAMPLE_APP] Failed to create configuration");
         return -1;
     }
 
-    printf("Hello, Paylink!\n");
-    if (createPaylinkSystem(path, log_callback) != 0) pass here user_datat for log_callback
+    log_menu.addElement("[EXAMPLE_APP] Hello, Paylink!");
+    if (createPaylinkSystem(path, log_callback, static_cast<void *>(&log_menu)))
     {
-        printf("Failed to create Paylink system\n");
+        log_menu.addElement("[EXAMPLE_APP] Failed to create Paylink system");
         free(path);
         return 1;
     }
 
-    setnewBanknoteCallbackCtx(banknote_callback,nullptr); // Set banknote callback
-    setCardDetectedCallbackCtx(card_detected_callback,nullptr); // Set card detection callback
+    setnewBanknoteCallbackCtx(banknote_callback, static_cast<void *>(&callbackElements));       // Set banknote callback
+    setCardDetectedCallbackCtx(card_detected_callback, static_cast<void *>(&callbackElements)); // Set card detection callback
+    setButtonsStateChangeCallbackCtx([](const uint16_t state, const uint16_t open_edge, const uint16_t close_edge, void *user_data)
+                                     {
+                                            auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
+                                            component->addElement(std::format("Buttons state changed: state = {}, open_edge = {}, close_edge = {}", state, open_edge, close_edge)); },
+                                     static_cast<void *>(&callbackElements)); // Set buttons state change callback
+    setSensorsStateChangeCallbackCtx([](const char *view, void *user_data)
+                                     {
+                                              auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
+                                              component->addElement(std::format("Sensors state changed: {}", view)); },
+                                     static_cast<void *>(&callbackElements)); // Set sensors state change callback
 
     free(path);
 
-    auto screen = ScreenInteractive::TerminalOutput();
     std::vector<std::string> commmandName =
         {
             "getVersion()",
@@ -279,7 +305,7 @@ int main()
     auto clear_button = Button("Clear Logs", [&]
                                { log_menu.clear(); });
     auto submit_button = Button("Submit Command", [&]
-                                { action(screen, commmandName, selectedCommand); }, ButtonOption::Animated(Color::Red));
+                                { action(screen, commmandName, selectedCommand, log_menu); }, ButtonOption::Animated(Color::Red));
 
     // ---- MAIN LAYOUT ----
     auto layout = Container::Vertical({
@@ -326,6 +352,11 @@ int main()
 
     screen.Loop(renderer);
 
-    destroyPaylinkSystem();
+
+    // printf("\033[0m");       // reset colors
+    // printf("\033[?25h");     // show cursor
+    // printf("\033[?1049l");   // exit alternate screen (fullscreen mode)
+    // printf("\033[2J\033[H"); // clear screen
+    // fflush(stdout);
     return 0;
 }

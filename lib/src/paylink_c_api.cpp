@@ -1,4 +1,5 @@
 #include "paylink/paylink_c_api.h"
+#include <cstring>
 #include "system.h"
 // #include "paylink_c_api.h"
 
@@ -6,7 +7,8 @@ static std::unique_ptr<paylink::system> handle;
 
 extern "C"
 {
-    int createPaylinkSystem(const char *config_path, LoggerCallback func)
+    int
+    createPaylinkSystem(const char *config_path, LoggerCallback func, void *user_data)
     {
         if (handle)
         {
@@ -15,7 +17,7 @@ extern "C"
 
         try
         {
-            handle = std::make_unique<paylink::system>(config_path, func);
+            handle = std::make_unique<paylink::system>(config_path, func, user_data);
             if (!handle->isInstanceValid())
             {
                 destroyPaylinkSystem();
@@ -31,21 +33,24 @@ extern "C"
         }
     }
 
-    void destroyPaylinkSystem()
+    void
+    destroyPaylinkSystem()
     {
         handle.reset(); // This will call the destructor of paylink::system
     }
 
-    const char *getVersion()
+    const char *
+    getVersion()
     {
         if (handle)
         {
-            return handle->version().c_str();
+            return handle->version();
         }
         return nullptr;
     }
 
-    void setnewBanknoteCallbackCtx(BanknoteCallback func, void *user_data)
+    void
+    setnewBanknoteCallbackCtx(BanknoteCallback func, void *user_data)
     {
         if (handle)
         {
@@ -53,7 +58,8 @@ extern "C"
         }
     }
 
-    int setCardDetectedCallbackCtx(CardDetectionCallback func, void *user_data)
+    int
+    setCardDetectedCallbackCtx(CardDetectionCallback func, void *user_data)
     {
         if (handle)
         {
@@ -62,7 +68,8 @@ extern "C"
         return -1;
     }
 
-    void setButtonsStateChangeCallbackCtx(ButtonsChangeCallback func, void *user_data)
+    void
+    setButtonsStateChangeCallbackCtx(ButtonsChangeCallback func, void *user_data)
     {
         if (handle)
         {
@@ -70,7 +77,8 @@ extern "C"
         }
     }
 
-    void setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data)
+    void
+    setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data)
     {
         if (handle)
         {
@@ -78,7 +86,8 @@ extern "C"
         }
     }
 
-    void setLoggerCallbackCtx(LoggerCallback func, void *user_data)
+    void
+    setLoggerCallbackCtx(LoggerCallback func, void *user_data)
     {
         if (handle)
         {
@@ -95,7 +104,8 @@ extern "C"
     //     }
     // }
 
-    int dispenseCoins(uint32_t amount)
+    int
+    dispenseCoins(uint32_t amount)
     {
         if (handle)
         {
@@ -104,7 +114,8 @@ extern "C"
         return -1;
     }
 
-    uint16_t getButtonsState()
+    uint16_t
+    getButtonsState()
     {
         if (handle)
         {
@@ -113,17 +124,21 @@ extern "C"
         return 0;
     }
 
-    const char *getSensorsState()
+    const char *
+    getSensorsState()
     {
         if (handle)
         {
-            static std::string sensors_state = handle->get_sensors_state();
-            return sensors_state.c_str();
+            std::string sensors_state = handle->get_sensors_state();
+            char *result = new char[sensors_state.size() + 1];
+            std::memcpy(result, sensors_state.c_str(), sensors_state.size() + 1);
+            return result;
         }
         return nullptr;
     }
 
-    void setLED(int number, bool on, uint32_t interval_ms)
+    void
+    setLED(int number, bool on, uint32_t interval_ms)
     {
         if (handle)
         {
@@ -131,7 +146,8 @@ extern "C"
         }
     }
 
-    void setMotor(bool on, uint32_t ms)
+    void
+    setMotor(bool on, uint32_t ms)
     {
         if (handle)
         {
@@ -139,7 +155,8 @@ extern "C"
         }
     }
 
-    int levelOfCoins()
+    int
+    levelOfCoins()
     {
         if (handle)
         {
@@ -148,7 +165,8 @@ extern "C"
         return -1;
     }
 
-    int currentCredit()
+    int
+    currentCredit()
     {
         if (handle)
         {
@@ -156,4 +174,9 @@ extern "C"
         }
         return -1;
     }
+}
+
+void freeString(const char *str)
+{
+    delete[] str;
 }

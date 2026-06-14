@@ -26,7 +26,6 @@ namespace paylink
         com::scheduler scheduler;
         std::unordered_map<int, std::size_t> led_pending_task_map;
         int TotalAmountRead{};
-        int StartTotalAmountRead{};
         bool validInstance{};
         struct sensors_t
         {
@@ -64,6 +63,7 @@ namespace paylink
                 ModType stm{};
             } module;
         } config;
+        const char *EXIT_MSG{"EXIT"};
         bool init();
         void update_banknote();
         void update_event();
@@ -75,26 +75,51 @@ namespace paylink
         // fill calbacks for all calls
         // test nfc reader phisically
         system() = delete;
-        system(std::string_view config_path, LoggerCallback func = nullptr);
+        system(std::string_view config_path, LoggerCallback func = nullptr, void *user_data = nullptr);
         /* ASYNC */
-        void set_new_banknote_callback(BanknoteCallback func, void *user_data = nullptr);
-        int set_card_detected_callback(CardDetectionCallback func, void *user_data = nullptr);
-        void set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data = nullptr);
-        void set_sensors_state_change_callback(SignalChangeCallback func, void *user_data = nullptr);
-        void set_logger_callback(LoggerCallback func, void *user_data = nullptr);
+        void
+        set_new_banknote_callback(BanknoteCallback func, void *user_data = nullptr);
+
+        int
+        set_card_detected_callback(CardDetectionCallback func, void *user_data = nullptr);
+
+        void
+        set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data = nullptr);
+
+        void
+        set_sensors_state_change_callback(SignalChangeCallback func, void *user_data = nullptr);
+
+        void
+        set_logger_callback(LoggerCallback func, void *user_data = nullptr);
         // void set_error_event_callback(ErrorEventCallback func, void *user_data = nullptr);
         // set callbacks and pass requests to endpoint classes
         /* SYNC */
         int
         dispense_coins(uint32_t amount);
-        uint16_t get_buttons_state();
-        std::string get_sensors_state();
-        void set_led(int number, bool on, uint32_t interval_ms);
-        void set_motor(bool on, uint32_t ms = 0);
-        std::string version();
-        int level_of_coins();
-        int current_credit();
-        bool isInstanceValid() const { return validInstance; }
+
+        uint16_t
+        get_buttons_state();
+
+        std::string
+        get_sensors_state();
+
+        void
+        set_led(int number, bool on, uint32_t interval_ms);
+
+        void
+        set_motor(bool on, uint32_t ms = 0);
+
+        const char *
+        version();
+
+        int 
+        level_of_coins();
+
+        int 
+        current_credit();
+
+        bool 
+        isInstanceValid() const { return validInstance; }
         ~system();
     };
 }
