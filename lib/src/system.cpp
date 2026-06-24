@@ -12,7 +12,7 @@ using namespace std::chrono_literals;
 
 namespace
 {
-    std::string_view 
+    std::string_view
     decode_event(int event)
     {
         switch (event)
@@ -114,7 +114,7 @@ namespace
 
 namespace paylink
 {
-    system::system(std::string_view config_path, LoggerCallback func, void *user_data) : nfc_reader(pool), stm32(pool), sensors(pool)
+    system::system(std::string_view config_path, LoggerCallback func, void *user_data) : sensors(pool)
     {
         read_configuration(config_path);
         /* Logger */
@@ -127,7 +127,34 @@ namespace paylink
 
         if (init())
         {
-            stm32.run_communication();
+            if (config.module.stm == ConfigT::module_t::ModType::ENABLED)
+            {
+                mik::logger::debug("STM32 module enabled");
+                stm32 = std::make_unique<uc::stm>(pool);
+                stm32->run_communication();
+            }
+            else if (config.module.stm == ConfigT::module_t::ModType::DISABLED)
+            {
+                mik::logger::debug("STM32 module disabled");
+            }
+            else if (config.module.stm == ConfigT::module_t::ModType::STUB)
+            {
+                mik::logger::debug("STM32 module stub");
+            }
+
+            if (config.module.pn532 == ConfigT::module_t::ModType::ENABLED)
+            {
+                mik::logger::debug("PN532 module enabled");
+                nfc_reader = std::make_unique<nfc::pn532>(pool);
+            }
+            else if (config.module.pn532 == ConfigT::module_t::ModType::DISABLED)
+            {
+                mik::logger::debug("PN532 module disabled");
+            }
+            else if (config.module.pn532 == ConfigT::module_t::ModType::STUB)
+            {
+                mik::logger::debug("PN532 module stub");
+            }
 
             /* Start interval functions */
             {
@@ -164,39 +191,56 @@ namespace paylink
         }
     }
 
-    void 
+    void
     system::set_new_banknote_callback(BanknoteCallback func, void *user_data)
     {
         banknote_cb_ctx.callback = func;
         banknote_cb_ctx.user_data = user_data;
     }
 
-    int 
+    int
     system::set_card_detected_callback(CardDetectionCallback func, void *user_data)
     {
-        return nfc_reader.poll(CardDetectionCallbackCtx{func, user_data});
+        if (nfc_reader)
+        {
+            return nfc_reader->poll(CardDetectionCallbackCtx{func, user_data});
+
+            mik::logger::error("NFC reader not initialized, cannot set card detected callback");
+        }
+        else
+        {
+            mik::logger::error("NFC reader not initialized, cannot set card detected callback");
+            return -1;
+        }
     }
 
-    void 
+    void
     system::set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data)
     {
         sensors.buttons_cb_ctx.callback = func;
         sensors.buttons_cb_ctx.user_data = user_data;
     }
 
-    void 
+    void
     system::set_sensors_state_change_callback(SignalChangeCallback func, void *user_data)
     {
-        stm32.set_sensors_state_change_callback(SignalChangeCallbackCtx{func, user_data});
+        if (stm32)
+        {
+            stm32->set_sensors_state_change_callback(SignalChangeCallbackCtx{func, user_data});
+        }
+        else
+        {
+            mik::logger::error("STM32 module not initialized, cannot set sensors state change callback");
+        }
     }
 
-    void 
+    void
     system::set_logger_callback(LoggerCallback func, void *user_data)
     {
         mik::logger::set_external_callback(func, user_data);
     }
 
-    bool 
+    bool
     system::init()
     {
         if (auto state = utils::OpenMHEVersion(); state.first != SUCCESS)
@@ -275,7 +319,7 @@ namespace paylink
         return true;
     }
 
-    void 
+    void
     system::update_banknote()
     {
         /* Check if new banknote appears */
@@ -293,7 +337,7 @@ namespace paylink
         }
     }
 
-    void 
+    void
     system::update_event()
     {
         EventDetailBlock event_details;
@@ -319,7 +363,7 @@ namespace paylink
         }
     }
 
-    void 
+    void
     system::read_configuration(std::string_view config_path)
     {
         auto configuration = toml::parse_file(config_path);
@@ -353,7 +397,7 @@ namespace paylink
 
         /* MODULES */
         /* PAYLINK */
-        if (auto paylink = configuration["modules"]["paylink"]; paylink)
+        if (auto paylink = configuration["module"]["paylink"]; paylink)
         {
             if (paylink.is_string())
             {
@@ -362,7 +406,7 @@ namespace paylink
         }
 
         /* ACCEPTOR */
-        if (auto acceptor = configuration["modules"]["acceptor"]; acceptor)
+        if (auto acceptor = configuration["module"]["acceptor"]; acceptor)
         {
             if (acceptor.is_string())
             {
@@ -371,7 +415,7 @@ namespace paylink
         }
 
         /* DISPENSER */
-        if (auto dispenser = configuration["modules"]["dispenser"]; dispenser)
+        if (auto dispenser = configuration["module"]["dispenser"]; dispenser)
         {
             if (dispenser.is_string())
             {
@@ -380,7 +424,7 @@ namespace paylink
         }
 
         /* PN532 */
-        if (auto pn532 = configuration["modules"]["pn532"]; pn532)
+        if (auto pn532 = configuration["module"]["pn532"]; pn532)
         {
             if (pn532.is_string())
             {
@@ -389,7 +433,7 @@ namespace paylink
         }
 
         /* STM */
-        if (auto stm = configuration["modules"]["stm"]; stm)
+        if (auto stm = configuration["module"]["stm"]; stm)
         {
             if (stm.is_string())
             {
@@ -398,7 +442,7 @@ namespace paylink
         }
     }
 
-    int 
+    int
     system::dispense_coins(uint32_t amount)
     {
         /* This call must be exclusive to disallow concurrent calls */
@@ -456,7 +500,7 @@ namespace paylink
         }
     }
 
-    uint16_t 
+    uint16_t
     system::get_buttons_state()
     {
         auto prom = std::promise<int>{};
@@ -469,13 +513,18 @@ namespace paylink
         return fut.get();
     }
 
-    std::string 
+    std::string
     system::get_sensors_state()
     {
-        return stm32.get_signals_req();
+        if (!stm32)
+        {
+            mik::logger::error("STM32 module not initialized, cannot get sensors state");
+            return {};
+        }
+        return stm32->get_signals_req();
     }
 
-    void 
+    void
     system::set_led(int number, bool on, uint32_t interval_ms)
     {
         if (led_pending_task_map.contains(number))
@@ -510,7 +559,7 @@ namespace paylink
         }
     }
 
-    void 
+    void
     system::set_motor(bool on, uint32_t ms)
     {
 
@@ -538,14 +587,14 @@ namespace paylink
         }
     }
 
-    const char* 
+    const char *
     system::version()
     {
         static const auto version_str = std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
         return version_str.c_str();
     }
 
-    int 
+    int
     system::level_of_coins()
     {
         auto prom = std::promise<int>{};
@@ -557,7 +606,7 @@ namespace paylink
         return fut.get();
     }
 
-    int 
+    int
     system::current_credit()
     {
         auto prom = std::promise<int>{};
@@ -578,7 +627,7 @@ namespace paylink
         DisableInterface();
         mik::logger::trace("DisableInterface");
     }
-    uint16_t 
+    uint16_t
     system::sensors_t::get_buttons_state(bool notify_via_callback)
     {
         uint16_t new_state{};

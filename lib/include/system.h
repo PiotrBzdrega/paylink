@@ -20,8 +20,8 @@ namespace paylink
         acceptor note_acceptor;
         dispenser coin_dispenser;
         BS::thread_pool<> pool{4};
-        nfc::pn532 nfc_reader;
-        uc::stm stm32;
+        std::unique_ptr<nfc::pn532> nfc_reader;
+        std::unique_ptr<uc::stm> stm32;
         BanknoteCallbackCtx banknote_cb_ctx;
         com::scheduler scheduler;
         std::unordered_map<int, std::size_t> led_pending_task_map;
@@ -112,13 +112,13 @@ namespace paylink
         const char *
         version();
 
-        int 
+        int
         level_of_coins();
 
-        int 
+        int
         current_credit();
 
-        bool 
+        bool
         isInstanceValid() const { return validInstance; }
         ~system();
     };

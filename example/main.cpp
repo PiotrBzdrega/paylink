@@ -73,61 +73,6 @@ public:
     }
 };
 
-char *createConfiguration()
-{
-    char filename[] = "/tmp/paylinkXXXXXX.toml";
-
-    /*
-     * suffixlen = length of ".toml"
-     * ".toml" = 5 characters
-     */
-    int fd = mkstemps(filename, 5);
-    if (fd == -1)
-    {
-        perror("mkstemps");
-        return NULL;
-    }
-
-    // printf("File created: %s\n", filename);
-
-    /*
-     * 0644:
-     * owner: rw-
-     * group: r--
-     * other: r--
-     */
-    if (fchmod(fd, 0644) == -1)
-    {
-        perror("fchmod");
-        close(fd);
-        return NULL;
-    }
-
-    FILE *fp = fdopen(fd, "w");
-    if (!fp)
-    {
-        perror("fdopen");
-        close(fd);
-        return NULL;
-    }
-
-    fprintf(fp,
-            "[logger]\n"
-            "# TRACE, DEBUG, INFO, ERROR, NONE\n"
-            "level = \"TRACE\"\n"
-            "stdout = false\n"
-            "# file = \"/tmp/paylink.log\"\n"
-            "\n"
-            "[module]\n"
-            "# DISABLED, STUB, ENABLED\n"
-            "pn532 = \"DISABLED\"\n"
-            "acceptor = \"STUB\"\n");
-
-    fclose(fp);
-
-    return strdup(filename); // caller must free();
-}
-
 void log_callback(const char *msg, void *user_data)
 {
     auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
@@ -240,11 +185,93 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
     else if (commmandName[selectedCommand] == "Exit")
     {
         destroyPaylinkSystem();
-        destroy menus, to omit posting to screen after exiting
-         (since callbacks may still be called after exiting, but we want to avoid posting to screen
+        // destroy menus, to omit posting to screen after exiting
+        //  (since callbacks may still be called after exiting, but we want to avoid posting to screen
         screen.Exit();
     }
 }
+
+class ConfigurationFile
+{
+private:
+    char *path;
+
+public:
+    ConfigurationFile() : path(createConfiguration())
+    {
+        if (path == NULL)
+        {
+            throw std::runtime_error("Failed to create configuration file");
+        }
+    }
+    ~ConfigurationFile()
+    {
+        if (path != NULL)
+        {
+            std::remove(path);
+            free(path);
+        }
+    }
+    const char * operator ()() const
+    {
+        return path;
+    }
+    char *createConfiguration()
+    {
+        char filename[] = "/tmp/paylinkXXXXXX.toml";
+
+        /*
+         * suffixlen = length of ".toml"
+         * ".toml" = 5 characters
+         */
+        int fd = mkstemps(filename, 5);
+        if (fd == -1)
+        {
+            perror("mkstemps");
+            return NULL;
+        }
+
+        // printf("File created: %s\n", filename);
+
+        /*
+         * 0644:
+         * owner: rw-
+         * group: r--
+         * other: r--
+         */
+        if (fchmod(fd, 0644) == -1)
+        {
+            perror("fchmod");
+            close(fd);
+            return NULL;
+        }
+
+        FILE *fp = fdopen(fd, "w");
+        if (!fp)
+        {
+            perror("fdopen");
+            close(fd);
+            return NULL;
+        }
+
+        fprintf(fp,
+                "[logger]\n"
+                "# TRACE, DEBUG, INFO, ERROR, NONE\n"
+                "level = \"TRACE\"\n"
+                "stdout = false\n"
+                "# file = \"/tmp/paylink.log\"\n"
+                "\n"
+                "[module]\n"
+                "# DISABLED, STUB, ENABLED\n"
+                "pn532 = \"DISABLED\"\n"
+                "stm = \"DISABLED\"\n"
+                "acceptor = \"STUB\"\n");
+
+        fclose(fp);
+
+        return strdup(filename); // caller must free();
+    }
+};
 
 int main()
 {
@@ -253,18 +280,12 @@ int main()
     auto callbackElements = AdaptiveMenu<std::string>(screen, 3);
     auto log_menu = AdaptiveMenu<std::string>(screen, 10);
 
-    char *path = createConfiguration();
-    if (path == NULL)
-    {
-        log_menu.addElement("[EXAMPLE_APP] Failed to create configuration");
-        return -1;
-    }
+    ConfigurationFile configFile;
 
-    log_menu.addElement("[EXAMPLE_APP] Hello, Paylink!");
-    if (createPaylinkSystem(path, log_callback, static_cast<void *>(&log_menu)))
+    log_menu.addElement("[EXAMPLE_APP] Hello, Paylink! Starting example application... with configureation file: " + std::string(configFile()));
+    if (createPaylinkSystem(configFile(), log_callback, static_cast<void *>(&log_menu)))
     {
         log_menu.addElement("[EXAMPLE_APP] Failed to create Paylink system");
-        free(path);
         return 1;
     }
 
@@ -280,8 +301,6 @@ int main()
                                               auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
                                               component->addElement(std::format("Sensors state changed: {}", view)); },
                                      static_cast<void *>(&callbackElements)); // Set sensors state change callback
-
-    free(path);
 
     std::vector<std::string> commmandName =
         {
@@ -351,7 +370,6 @@ int main()
                                       border; });
 
     screen.Loop(renderer);
-
 
     // printf("\033[0m");       // reset colors
     // printf("\033[?25h");     // show cursor
