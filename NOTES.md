@@ -30,4 +30,7 @@ Install the project...
 -- Installing: /usr/local/lib/libpaylink.so.0
 -- Installing: /usr/local/lib/libpaylink.so
 -- Installing: /usr/local/include/paylink/paylink_c_api.h
+
+#or
+sudo cmake --install build
 ```
