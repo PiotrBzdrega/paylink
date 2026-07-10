@@ -44,7 +44,11 @@ extern "C"
     {
         if (handle)
         {
-            return handle->version();
+            auto sv = handle->version();
+            char *p = new char[sv.size() + 1];
+            std::memcpy(p, sv.data(), sv.size());
+            p[sv.size()] = '\0';
+            return p;
         }
         return nullptr;
     }

@@ -105,6 +105,7 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
         {
             log_menu.addElement("Invalid app version:");
         }
+        freeString(ver);
     }
     else if (commmandName[selectedCommand] == "dispenseCoins(100)")
     {
@@ -263,8 +264,8 @@ public:
                 "\n"
                 "[module]\n"
                 "# DISABLED, STUB, ENABLED\n"
-                "pn532 = \"DISABLED\"\n"
-                "stm = \"DISABLED\"\n"
+                "# pn532 = \"DISABLED\"\n"
+                "# stm = \"DISABLED\"\n"
                 "acceptor = \"STUB\"\n");
 
         fclose(fp);
@@ -370,7 +371,6 @@ int main()
                                       border; });
 
     screen.Loop(renderer);
-
     // printf("\033[0m");       // reset colors
     // printf("\033[?25h");     // show cursor
     // printf("\033[?1049l");   // exit alternate screen (fullscreen mode)

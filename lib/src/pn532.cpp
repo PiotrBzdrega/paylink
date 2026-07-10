@@ -70,10 +70,9 @@ namespace nfc
                     // nfc_exit(context);
                     // exit(EXIT_FAILURE);
                 }
-
                 if (res > 0)
                 {
-                    auto verbose{true};
+                    auto verbose{false};
                     auto target_info = print_nfc_target(&pnt, verbose);
                     // TODO: i think that class related to tasks that has been stored, but not yet started, should be alive longer than this function scope,
                     //  so make sure so is it

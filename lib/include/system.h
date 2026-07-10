@@ -109,7 +109,7 @@ namespace paylink
         void
         set_motor(bool on, uint32_t ms = 0);
 
-        const char *
+        std::string_view
         version();
 
         int

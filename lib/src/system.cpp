@@ -587,11 +587,11 @@ namespace paylink
         }
     }
 
-    const char *
+    std::string_view
     system::version()
     {
         static const auto version_str = std::format("{} {}.{}.{}", PROJECT_NAME, VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
-        return version_str.c_str();
+        return version_str;
     }
 
     int
