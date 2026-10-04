@@ -1,7 +1,6 @@
 #include "paylink/paylink_c_api.h"
 #include <cstring>
 #include "system.h"
-// #include "paylink_c_api.h"
 
 static std::unique_ptr<paylink::system> handle;
 
@@ -159,14 +158,25 @@ extern "C"
         }
     }
 
-    int
+    int dispensedCoins()
+    {
+        if (handle)
+        {
+            return handle->dispensed_coins();
+        }
+        return -1;
+    }
+    const char *
     levelOfCoins()
     {
         if (handle)
         {
-            return handle->level_of_coins();
+            std::string level_of_coins = handle->level_of_coins();
+            char *result = new char[level_of_coins.size() + 1];
+            std::memcpy(result, level_of_coins.c_str(), level_of_coins.size() + 1);
+            return result;
         }
-        return -1;
+        return nullptr;
     }
 
     int
@@ -178,6 +188,38 @@ extern "C"
         }
         return -1;
     }
+}
+
+struct SystemInfo
+systemInfo()
+{
+    SystemInfo info{};
+    if (handle)
+    {
+        auto system_info = handle->info();
+
+        info.platform_type = new char[system_info.platform_type.size() + 1];
+        std::memcpy(info.platform_type, system_info.platform_type.c_str(), system_info.platform_type.size() + 1);
+
+        info.firmware_version = new char[system_info.firmware_version.size() + 1];
+        std::memcpy(info.firmware_version, system_info.firmware_version.c_str(), system_info.firmware_version.size() + 1);
+
+        info.serial_number = new char[system_info.serial_number.size() + 1];
+        std::memcpy(info.serial_number, system_info.serial_number.c_str(), system_info.serial_number.size() + 1);
+
+        info.dispenser_unit = new char[system_info.dispenser_unit.size() + 1];
+        std::memcpy(info.dispenser_unit, system_info.dispenser_unit.c_str(), system_info.dispenser_unit.size() + 1);
+
+        info.dispenser_serial_number = new char[system_info.dispenser_serial_number.size() + 1];
+        std::memcpy(info.dispenser_serial_number, system_info.dispenser_serial_number.c_str(), system_info.dispenser_serial_number.size() + 1);
+
+        info.acceptor_unit = new char[system_info.acceptor_unit.size() + 1];
+        std::memcpy(info.acceptor_unit, system_info.acceptor_unit.c_str(), system_info.acceptor_unit.size() + 1);
+
+        info.acceptor_serial_number = new char[system_info.acceptor_serial_number.size() + 1];
+        std::memcpy(info.acceptor_serial_number, system_info.acceptor_serial_number.c_str(), system_info.acceptor_serial_number.size() + 1);
+    }
+    return info;
 }
 
 void freeString(const char *str)

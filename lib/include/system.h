@@ -12,6 +12,18 @@
 // TODO: add thirdparty include directory to keep current version of only-header libraries
 namespace paylink
 {
+    struct system_info
+    {
+        bool result;
+        std::string platform_type;
+        std::string firmware_version;
+        std::string serial_number;
+        std::string dispenser_unit;
+        std::string dispenser_serial_number;
+        std::string acceptor_unit;
+        std::string acceptor_serial_number;
+    };
+
     constexpr static auto INPUTS_LEN{16};
     class system
     {
@@ -62,6 +74,12 @@ namespace paylink
                 ModType pn532{};
                 ModType stm{};
             } module;
+            struct Intervals
+            {
+                std::chrono::milliseconds banknote{300};
+                std::chrono::seconds event{1};
+                std::chrono::milliseconds buttons{50};
+            } intervals;
         } config;
         const char *EXIT_MSG{"EXIT"};
         bool init();
@@ -112,8 +130,14 @@ namespace paylink
         std::string_view
         version();
 
-        int
+        struct system_info
+        info();
+
+        std::string
         level_of_coins();
+
+        int
+        dispensed_coins();
 
         int
         current_credit();

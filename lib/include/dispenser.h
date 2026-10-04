@@ -1,5 +1,5 @@
 #pragma once
-#include <string_view>
+#include <string>
 #include "Aesimhei.h"
 #include <cstdint>
 namespace paylink
@@ -9,7 +9,7 @@ namespace paylink
     private:
         DispenserBlock block;
         std::string_view unitToString();
-        std::string_view coinLevelToString();
+        std::string coinLevelToString();
         bool updateBlock();
 
     public:
@@ -17,19 +17,29 @@ namespace paylink
         std::string_view statusToString();
         void debug_info();
         void setInhibit(bool state);
+        void update()
+        {
+            updateBlock();
+        }
         DispenserBlock *operator&()
         {
             return &block;
         }
-        int getDispensedCoins()
+        int getDispensedCoins(bool update = true)
         {
-            updateBlock();
+            if (update)
+            {
+                updateBlock();
+            }
             return block.Count;
         }
-        int getLevelOfCoins()
+        std::string getLevelOfCoins(bool update = true)
         {
-            updateBlock();
-            return block.Value;
+            if (update)
+            {
+                updateBlock();
+            }
+            return coinLevelToString();
         }
     };
 

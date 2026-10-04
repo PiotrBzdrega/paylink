@@ -115,7 +115,7 @@ namespace nfc
     {
         if (poll_thread.joinable()) // check if previous thread ended
         {
-            mik::logger::debug("Cannot start polling, previous thread still running");
+            mik::logger::debug("Cannot start new polling, previous thread still running");
             return -1; // previous thread still running
         }
         else

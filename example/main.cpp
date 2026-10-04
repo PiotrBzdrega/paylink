@@ -157,8 +157,9 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
     }
     else if (commmandName[selectedCommand] == "levelOfCoins()")
     {
-        int lvl = levelOfCoins();
+        auto lvl = levelOfCoins();
         log_menu.addElement(std::format("Level of coins: {}", lvl));
+        freeString(lvl);
     }
     else if (commmandName[selectedCommand] == "currentCredit()")
     {

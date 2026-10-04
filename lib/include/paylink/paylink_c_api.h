@@ -1,9 +1,10 @@
 #pragma once
-#include "paylink/callbacks.h"
+#include "paylink/typedefs_c_api.h"
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
     int
     createPaylinkSystem(const char *config_path, LoggerCallback func, void *user_data);
 
@@ -49,10 +50,19 @@ extern "C"
     setMotor(bool on, uint32_t ms);
 
     int
+    dispensedCoins();
+
+    const char *
     levelOfCoins();
 
     int
     currentCredit();
+
+    /**
+     * @brief Get the system status (requires more time than single command to obtain the status )
+     */
+    struct SystemInfo
+    systemInfo();
 
     void
     freeString(const char *str);

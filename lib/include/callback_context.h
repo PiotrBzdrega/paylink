@@ -1,5 +1,5 @@
 #pragma once
-#include "paylink/callbacks.h"
+#include "paylink/typedefs_c_api.h"
 
 struct BanknoteCallbackCtx
 {

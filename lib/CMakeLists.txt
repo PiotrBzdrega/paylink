@@ -40,7 +40,7 @@ target_sources(${PROJECT_NAME}
         FILE_SET public_headers
         TYPE HEADERS
         BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include
-        FILES include/${PROJECT_NAME}/paylink_c_api.h include/${PROJECT_NAME}/callbacks.h
+        FILES include/${PROJECT_NAME}/paylink_c_api.h include/${PROJECT_NAME}/typedefs_c_api.h
     PRIVATE
         ${SOURCES})
 

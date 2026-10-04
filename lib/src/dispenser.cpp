@@ -160,7 +160,7 @@ namespace paylink
         }
     }
 
-    std::string_view dispenser::coinLevelToString()
+    std::string dispenser::coinLevelToString()
     {
 
         /*-- Determine coin count contents --------------------------------*/

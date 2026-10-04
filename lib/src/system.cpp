@@ -156,25 +156,28 @@ namespace paylink
                 mik::logger::debug("PN532 module stub");
             }
 
+            //TODO: remove later, since not necessary, just for debug purposes
+            note_acceptor.init();
+
             /* Start interval functions */
             {
                 /* BANKNOTE */
                 scheduler.submit_periodic_task(
                     [this](/* this auto& self */)
                     { update_banknote(); },
-                    500ms);
+                    config.intervals.banknote);
 
                 /* EVENTS */
                 scheduler.submit_periodic_task(
                     [this](/* this auto& self */)
                     { update_event(); },
-                    1s);
+                    config.intervals.event);
 
                 /* BUTTONS */
                 scheduler.submit_periodic_task(
                     [this]()
                     { sensors.get_buttons_state(true); },
-                    100ms);
+                    config.intervals.buttons);
             }
 
             // if (coin_dispenser.setup() == false)
@@ -204,8 +207,6 @@ namespace paylink
         if (nfc_reader)
         {
             return nfc_reader->poll(CardDetectionCallbackCtx{func, user_data});
-
-            mik::logger::error("NFC reader not initialized, cannot set card detected callback");
         }
         else
         {
@@ -440,6 +441,32 @@ namespace paylink
                 config.module.stm = magic_enum::enum_cast<ConfigT::module_t::ModType>(stm.value<std::string>().value()).value_or(config.module.stm);
             }
         }
+
+        /* INTERVALS */
+        if (auto banknote = configuration["intervals"]["banknote"]; banknote)
+        {
+            if (banknote.is_number())
+            {
+                config.intervals.banknote = std::chrono::milliseconds(banknote.value<int>().value());
+            }
+        }
+
+        if (auto event = configuration["intervals"]["event"]; event)
+        {
+            if (event.is_number())
+            {
+                config.intervals.event = std::chrono::seconds(event.value<int>().value());
+            }
+        }
+
+        if (auto buttons = configuration["intervals"]["buttons"]; buttons)
+        {
+            if (buttons.is_number())
+            {
+                config.intervals.buttons = std::chrono::milliseconds(buttons.value<int>().value());
+            }
+        }
+
     }
 
     int
@@ -594,10 +621,17 @@ namespace paylink
         return version_str;
     }
 
-    int
+    system_info system::info()
+    {
+        system_info status{};
+
+        return status;
+    }
+
+    std::string
     system::level_of_coins()
     {
-        auto prom = std::promise<int>{};
+        auto prom = std::promise<std::string>{};
         auto fut = prom.get_future();
         /* Post payment Task */
         scheduler.submit_task([this, prom = std::move(prom)]() mutable
@@ -606,6 +640,17 @@ namespace paylink
         return fut.get();
     }
 
+    int
+    system::dispensed_coins()
+    {
+        auto prom = std::promise<int>{};
+        auto fut = prom.get_future();
+        /* Post payment Task */
+        scheduler.submit_task([this, prom = std::move(prom)]() mutable
+                              { prom.set_value(coin_dispenser.getDispensedCoins()); });
+
+        return fut.get();
+    }
     int
     system::current_credit()
     {
@@ -636,7 +681,7 @@ namespace paylink
         for (int i : std::views::iota(0, INPUTS_LEN))
         {
             /* OPEN */
-            // TODO: what paylink will be turned off, how does it affect Commands like SwitchOpens, SwitchCloses
+            // TODO: what if paylink will be turned off, how does it affect Commands like SwitchOpens, SwitchCloses
             auto new_open_counter = SwitchOpens(i);
             if (open_counter[i] != new_open_counter)
             {
