@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.23)
-# Set C++23 standard for all targets
-set(CMAKE_CXX_STANDARD 23)
+# Set C++26 standard for all targets
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # Enforce strict compliance
 set(CMAKE_CXX_EXTENSIONS OFF)        # Disable compiler-specific extensions
 

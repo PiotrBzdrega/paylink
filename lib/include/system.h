@@ -105,7 +105,10 @@ namespace paylink
         set_buttons_state_change_callback(ButtonsChangeCallback func, void *user_data = nullptr);
 
         void
-        set_sensors_state_change_callback(SignalChangeCallback func, void *user_data = nullptr);
+        set_main_sensor_state_change_callback(MainSensorChangeCallback func, void *user_data = nullptr);
+
+        void
+        set_drop_sensor_state_change_callback(DropSensorChangeCallback func, void *user_data = nullptr);
 
         void
         set_logger_callback(LoggerCallback func, void *user_data = nullptr);
@@ -118,8 +121,14 @@ namespace paylink
         uint16_t
         get_buttons_state();
 
-        std::string
-        get_sensors_state();
+        int
+        get_last_drop_sensor();
+
+        bool
+        get_main_sensor();
+
+        void
+        set_sensor_led(uint8_t number, uint16_t red, uint16_t green, uint16_t blue);
 
         void
         set_led(int number, bool on, uint32_t interval_ms);

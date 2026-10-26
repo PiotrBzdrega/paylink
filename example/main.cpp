@@ -168,16 +168,15 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
     }
     else if (commmandName[selectedCommand] == "getSensorsState()")
     {
-        const char *sensors = getSensorsState();
-        if (sensors != NULL)
+        const int sensor = getLastDropSensor();
+        if (sensor != -1)
         {
-            log_menu.addElement(std::format("Sensors state: {}", sensors));
+            log_menu.addElement(std::format("Sensors state: {}", sensor));
         }
         else
         {
             log_menu.addElement("Invalid Sensors state:");
         }
-        freeString(sensors);
     }
     else if (commmandName[selectedCommand] == "getButtonsState()")
     {
@@ -298,10 +297,10 @@ int main()
                                             auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
                                             component->addElement(std::format("Buttons state changed: state = {}, open_edge = {}, close_edge = {}", state, open_edge, close_edge)); },
                                      static_cast<void *>(&callbackElements)); // Set buttons state change callback
-    setSensorsStateChangeCallbackCtx([](const char *view, void *user_data)
+    setDropSensorChangeCallbackCtx([](const int sensor, void *user_data)
                                      {
                                               auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
-                                              component->addElement(std::format("Sensors state changed: {}", view)); },
+                                              component->addElement(std::format("Sensors state changed: {}", sensor)); },
                                      static_cast<void *>(&callbackElements)); // Set sensors state change callback
 
     std::vector<std::string> commmandName =

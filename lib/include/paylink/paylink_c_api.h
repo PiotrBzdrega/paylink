@@ -16,7 +16,6 @@ extern "C"
     // void setnewBanknoteCallback(BanknoteCallback func);
     // int setCardDetectedCallback(CardDetectionCallback func);
     // void setButtonsStateChangeCallback(ButtonsChangeCallback func);
-    // void setSensorsStateChangeCallback(SignalChangeCallback func);
     // void setLoggerCallback(LoggerCallback func);
 
     void
@@ -29,7 +28,10 @@ extern "C"
     setButtonsStateChangeCallbackCtx(ButtonsChangeCallback func, void *user_data);
 
     void
-    setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data);
+    setMainSensorChangeCallbackCtx(MainSensorChangeCallback func, void *user_data);
+
+    void
+    setDropSensorChangeCallbackCtx(DropSensorChangeCallback func, void *user_data);
 
     void
     setLoggerCallbackCtx(LoggerCallback func, void *user_data);
@@ -40,8 +42,17 @@ extern "C"
     uint16_t
     getButtonsState();
 
-    const char *
-    getSensorsState();
+    bool
+    getMainSensor();
+
+    int
+    getLastDropSensor();
+
+    void
+    setSensorLed(uint8_t number, uint16_t red, uint16_t green, uint16_t blue);
+
+    void
+    setAllSensorLed(uint16_t red, uint16_t green, uint16_t blue);
 
     void
     setLED(int number, bool on, uint32_t interval_ms);

@@ -13,9 +13,15 @@ struct BanknoteCallbackCtx
 //     void *user_data;
 // };
 
-struct SignalChangeCallbackCtx
+struct MainSensorChangeCallbackCtx
 {
-    SignalChangeCallback callback{nullptr};
+    MainSensorChangeCallback callback{nullptr};
+    void *user_data{nullptr};
+};
+
+struct DropSensorChangeCallbackCtx
+{
+    DropSensorChangeCallback callback{nullptr};
     void *user_data{nullptr};
 };
 

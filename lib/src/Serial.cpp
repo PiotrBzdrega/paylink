@@ -8,6 +8,7 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <linux/serial.h>
 
 namespace com
 {
@@ -50,7 +51,7 @@ namespace com
         return configure();
     }
 
-    expect<void> Serial::reconnect(bool keep_valid_fd)
+    expect<ReconnectResult> Serial::reconnect(bool keep_valid_fd)
     {
         if (tty_fd_ != -1 && !keep_valid_fd)
         {
@@ -60,11 +61,15 @@ namespace com
         else if (tty_fd_ != -1 && keep_valid_fd)
         {
             // mik::logger::trace("Serial port already open with fd {}, skipping reconnect", tty_fd_);
-            return {};
+            return ReconnectResult::AlreadyOpen;
         }
 
         /* return 0 if successful, -1 if failed */
-        return open();
+        if (auto res = open(); !res)
+        {
+            return std::unexpected(res.error());
+        }
+        return ReconnectResult::Success;
     }
 
     expect<void> Serial::configure()
@@ -72,7 +77,8 @@ namespace com
         struct termios options; // The options for the file descriptor
         if (tcgetattr(tty_fd_, &options) != 0)
         {
-            return std::unexpected("Failed to get terminal attributes");
+            auto msg = std::format("Failed to get terminal attributes; errno, strerror(errno): {} {}", errno, strerror(errno));
+            return std::unexpected(msg);
         }
         // Configure the terminal attributes here
         // set up raw mode / no echo / binary
@@ -115,8 +121,11 @@ namespace com
         options.c_cc[VTIME] = 0;
 
         // activate settings
-        ::tcsetattr(tty_fd_, TCSANOW, &options);
-
+        if (tcsetattr(tty_fd_, TCSANOW, &options) != 0)
+        {
+            auto msg = std::format("Failed to set terminal attributes; errno, strerror(errno): {} {}", errno, strerror(errno));
+            return std::unexpected(msg);
+        }
         return {};
     }
 
@@ -286,6 +295,178 @@ namespace com
                 }
             }
         }
+    }
+
+    expect<NotificationType> Serial::wait_for_notification()
+    {
+        if (tty_fd_ == -1)
+        {
+            return std::unexpected("Serial port not open");
+        }
+
+        unsigned int arg;
+        /* Get modem status lines */
+        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
+        {
+            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+
+        if (arg & TIOCM_DSR)
+        {
+            printf("DSR is high!");
+            return NotificationType::DSR;
+        }
+
+        if (arg & TIOCM_RI)
+        {
+            printf("RI is high!");
+            return NotificationType::RI;
+        }
+
+        // TODO: store previous state and check if it changed, otherwise wait for change
+        // if (arg & TIOCM_CD)
+        // {
+        //     return NotificationType::DCD;
+        // }
+
+        struct serial_icounter_struct before, after;
+
+        /* Get initial state */
+        if (ioctl(tty_fd_, TIOCGICOUNT, &before) < 0)
+        {
+            return std::unexpected(std::format("TIOCGICOUNT: Failed to get serial counter values; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+
+        printf("Before:  CTS=%d, DSR=%d, RNG=%d, DCD=%d\n", before.cts, before.dsr, before.rng, before.dcd);
+
+        /* Data Set Ready  - drop sensor change detected, Data Carrier Detect - main sensor change, Ring Indicator - We decided to stop TIOCMIWAIT */
+        if (ioctl(tty_fd_, TIOCMIWAIT, TIOCM_DSR | TIOCM_CD | TIOCM_RI) < 0)
+        {
+            return std::unexpected(std::format("TIOCMIWAIT: Failed in waiting for notification; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+
+        /* Get modem status lines */
+        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
+        {
+            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+
+        if (arg & TIOCM_DSR)
+        {
+            printf("DSR is high!");
+            return NotificationType::DSR;
+        }
+
+        if (arg & TIOCM_RI)
+        {
+            printf("RI is high!");
+            return NotificationType::RI;
+        }
+
+        /* Get state after notification */
+        if (ioctl(tty_fd_, TIOCGICOUNT, &after) < 0)
+        {
+            return std::unexpected(std::format("TIOCGICOUNT: Failed to get serial counter values after notification; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+        // if (after.dsr != before.dsr)
+        // {
+        //     printf("DSR changed! (Count: %d -> %d)\n", before.cts, after.cts);
+        //     return std::unexpected("DSR changed!");
+        // }
+        if (after.dcd != before.dcd)
+        {
+            printf("DCD changed! (Count: %d -> %d)\n", before.dcd, after.dcd);
+            return NotificationType::DCD;
+        }
+        // else if (after.rng != before.rng)
+        // {
+        //     printf("RI changed! (Count: %d -> %d)\n", before.rng, after.rng);
+        //     return {};
+        // }
+        else
+        {
+            printf("After:  CTS=%d, DSR=%d, RNG=%d, DCD=%d\n", after.cts, after.dsr, after.rng, after.dcd);
+        }
+
+        return std::unexpected("Unexpected change detected!");
+    }
+
+    expect<void> Serial::unlock_wait_notification(std::string_view data)
+    {
+        if (tty_fd_ == -1)
+        {
+            return std::unexpected("Serial port not open");
+        }
+        /* Write wakeup data */
+        if (auto res = write(data); !res)
+        {
+            return std::unexpected(res.error());
+        }
+        else
+        {
+            return {};
+        }
+    }
+
+    expect<bool> Serial::get_dcd()
+    {
+        if (tty_fd_ == -1)
+        {
+            return std::unexpected("Serial port not open");
+        }
+
+        unsigned int arg;
+
+        /* Get modem status lines */
+        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
+        {
+            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+        return !!(arg & TIOCM_CAR);
+    }
+
+    expect<bool> Serial::get_dsr()
+    {
+        if (tty_fd_ == -1)
+        {
+            return std::unexpected("Serial port not open");
+        }
+
+        unsigned int arg;
+
+        /* Get modem status lines */
+        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
+        {
+            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+        return !!(arg & TIOCM_DSR);
+    }
+
+    expect<void> Serial::wait_for_low_dsr(uint32_t interval_ms, uint32_t timeout_ms)
+    {
+        auto rem_timeout_ms = timeout_ms;
+        while (true)
+        {
+            if (auto dsr = get_dsr(); !dsr)
+            {
+                return std::unexpected(dsr.error());
+            }
+            else if (!dsr.value())
+            {
+                break;
+            }
+            else
+            {
+                usleep(interval_ms * 1000);
+                rem_timeout_ms -= interval_ms;
+
+                if (rem_timeout_ms <= interval_ms)
+                {
+                    return std::unexpected("Timeout waiting for low DSR");
+                }
+            }
+        }
+        return {};
     }
 
     void Serial::interrupt_wait()

@@ -8,20 +8,20 @@ extern "C"
     struct SystemInfo
     {
         bool result;
-        char* platform_type;
-        char* firmware_version;
-        char* serial_number;
-        char* dispenser_unit;
-        char* dispenser_serial_number;
-        char* acceptor_unit;
-        char* acceptor_serial_number;
+        char *platform_type;
+        char *firmware_version;
+        char *serial_number;
+        char *dispenser_unit;
+        char *dispenser_serial_number;
+        char *acceptor_unit;
+        char *acceptor_serial_number;
     };
 
     typedef void (*BanknoteCallback)(int overall_val, int banknote_val, void *user_data);
     typedef void (*ErrorEventCallback)(const char *msg, void *user_data);
-    // typedef void (*SignalChangeCallback)(bool *view, int v_size, int *signals, int s_size);
     // TODO: why do i have there signals ??
-    typedef void (*SignalChangeCallback)(const char *view, void *user_data);
+    typedef void (*MainSensorChangeCallback)(const bool, void *user_data);
+    typedef void (*DropSensorChangeCallback)(const int sensor, void *user_data);
     typedef void (*ButtonsChangeCallback)(const uint16_t state, const uint16_t open_edge, const uint16_t close_edge, void *user_data);
     typedef void (*CardDetectionCallback)(const char *uid, void *user_data);
     typedef void (*LoggerCallback)(const char *msg, void *user_data);

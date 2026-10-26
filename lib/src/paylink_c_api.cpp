@@ -80,12 +80,20 @@ extern "C"
         }
     }
 
-    void
-    setSensorsStateChangeCallbackCtx(SignalChangeCallback func, void *user_data)
+    void setMainSensorChangeCallbackCtx(MainSensorChangeCallback func, void *user_data)
     {
         if (handle)
         {
-            handle->set_sensors_state_change_callback(func, user_data);
+            handle->set_main_sensor_state_change_callback(func, user_data);
+        }
+    }
+
+    void
+    setDropSensorChangeCallbackCtx(DropSensorChangeCallback func, void *user_data)
+    {
+        if (handle)
+        {
+            handle->set_drop_sensor_state_change_callback(func, user_data);
         }
     }
 
@@ -127,17 +135,38 @@ extern "C"
         return 0;
     }
 
-    const char *
-    getSensorsState()
+    bool getMainSensor()
     {
         if (handle)
         {
-            std::string sensors_state = handle->get_sensors_state();
-            char *result = new char[sensors_state.size() + 1];
-            std::memcpy(result, sensors_state.c_str(), sensors_state.size() + 1);
-            return result;
+            return handle->get_buttons_state();
         }
-        return nullptr;
+        return false;
+    }
+
+    int
+    getLastDropSensor()
+    {
+        if (handle)
+        {
+            auto sensor = handle->get_last_drop_sensor();
+            return sensor;
+        }
+        return -1;
+    }
+
+    void setSensorLed(uint8_t number, uint16_t red, uint16_t green, uint16_t blue)
+    {
+        if (handle)
+        {
+            // Assuming you have a method in your system class to set the sensor LED
+            handle->set_sensor_led(number, red, green, blue);
+        }
+    }
+
+    void setAllSensorLed(uint16_t red, uint16_t green, uint16_t blue)
+    {
+        setSensorLed(0, red, green, blue);
     }
 
     void

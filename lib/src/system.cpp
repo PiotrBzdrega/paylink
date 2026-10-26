@@ -222,12 +222,24 @@ namespace paylink
         sensors.buttons_cb_ctx.user_data = user_data;
     }
 
-    void
-    system::set_sensors_state_change_callback(SignalChangeCallback func, void *user_data)
+    void system::set_main_sensor_state_change_callback(MainSensorChangeCallback func, void *user_data)
     {
         if (stm32)
         {
-            stm32->set_sensors_state_change_callback(SignalChangeCallbackCtx{func, user_data});
+            stm32->set_main_sensor_state_change_callback(MainSensorChangeCallbackCtx{func, user_data});
+        }
+        else
+        {
+            mik::logger::error("STM32 module not initialized, cannot set sensors state change callback");
+        }
+    }
+
+    void
+    system::set_drop_sensor_state_change_callback(DropSensorChangeCallback func, void *user_data)
+    {
+        if (stm32)
+        {
+            stm32->set_drop_sensor_state_change_callback(DropSensorChangeCallbackCtx{func, user_data});
         }
         else
         {
@@ -540,15 +552,35 @@ namespace paylink
         return fut.get();
     }
 
-    std::string
-    system::get_sensors_state()
+    int
+    system::get_last_drop_sensor()
     {
         if (!stm32)
         {
             mik::logger::error("STM32 module not initialized, cannot get sensors state");
             return {};
         }
-        return stm32->get_signals_req();
+        return stm32->get_last_drop_sensor_req();
+    }
+
+    bool system::get_main_sensor()
+    {
+        if (!stm32)
+        {
+            mik::logger::error("STM32 module not initialized, cannot get sensors state");
+            return {};
+        }
+        return stm32->get_main_sensor_req();
+    }
+
+    void system::set_sensor_led(uint8_t number, uint16_t red, uint16_t green, uint16_t blue)
+    {
+        if (!stm32)
+        {
+            mik::logger::error("STM32 module not initialized, cannot set sensor LED");
+            return;
+        }
+        stm32->set_sensor_led(number, red, green, blue);
     }
 
     void
