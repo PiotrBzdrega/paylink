@@ -19,6 +19,7 @@ namespace uc
         constexpr auto DCD_LOW{"DCD: 0"};
         constexpr auto LAST_DROP_SENSOR{"LAST_DROP_SENSOR"};
         constexpr auto MAIN_SENSOR{"MAIN_SENSOR"};
+        constexpr auto SET_LED{"Set_Led"};
         constexpr auto EXIT_MSG{"EXIT"};
 
         constexpr auto STATUS{"ADC_SPIKE_STATUS\r\n"};
@@ -56,16 +57,28 @@ namespace uc
                     const char *if_str =
                         udev_device_get_sysattr_value(usb_if, "interface");
 
-                    if (serial_ports.contains(if_str))
+                    if (if_str && serial_ports.contains(if_str))
                     {
                         const char *devnode = udev_device_get_devnode(dev);
-                        if (!devnode)
-                        {
-                            continue;
-                        }
-                        else
+                        if (devnode)
                         {
                             serial_ports[if_str] = devnode;
+                        }
+                    }
+                }
+
+                struct udev_device *usb_dev =
+                    udev_device_get_parent_with_subsystem_devtype(
+                        dev, "usb", "usb_device");
+                if (usb_dev)
+                {
+                    const char *product = udev_device_get_sysattr_value(usb_dev, "product");
+                    if (product && serial_ports.contains(product))
+                    {
+                        const char *devnode = udev_device_get_devnode(dev);
+                        if (devnode)
+                        {
+                            serial_ports[product] = devnode;
                         }
                     }
                 }
@@ -283,11 +296,14 @@ namespace uc
                                                      std::condition_variable &cv, bool &done)
                                   {
                                       // TODO: what if wait_for_notification crash but sertial still operateable -> reconnect
+                                      mik::logger::debug("Peripheral job started, waiting for notification");
                                       auto notification = virt_port.wait_for_notification();
                                       {
+                                          mik::logger::debug("Peripheral job finished, notification received, start locking mutex");
                                           std::unique_lock<std::mutex> lock(mtx);
                                           done = true;
                                           cv.notify_one();
+                                          mik::logger::debug("Peripheral job finished, notification received, mutex unlocked");
                                       }
 
                                       if (notification.has_value())
@@ -310,6 +326,10 @@ namespace uc
                                               /* restore low ring indicator state */
                                               this->create_request_ff(RESET_RI);
                                           }
+                                      }
+                                      else
+                                      {
+                                          mik::logger::error("Failed to wait for notification in peripheral job: {}", notification.error());
                                       }
                                   },
                                   [&virt_port]()
@@ -359,6 +379,7 @@ namespace uc
             {
                 /* Wait for new request */
                 request_queue.pop(sync_task.request);
+                mik::logger::debug("New message received in worker: {}", sync_task.request.first);
 
                 /* Make sure it is not request to terminate thread */
                 if (sync_task.request.first == EXIT_MSG)
@@ -379,6 +400,7 @@ namespace uc
             if (sync_task.request.first == STATUS)
             {
                 /* Send message to serial port  */
+                mik::logger::debug("Sending request to serial port: {}", sync_task.request.first);
                 auto wr_res = virt_port.write(sync_task.request.first, 1000);
                 if (!wr_res)
                 {
@@ -398,7 +420,9 @@ namespace uc
 
                 if (rd_res)
                 {
+                    mik::logger::debug("Response to request {}: {}", sync_task.request.first, rd_res.value().data());
                     auto sensor_id = process_status(rd_res.value().data());
+                    mik::logger::debug("Processed status result: {}", sensor_id.has_value() ? std::to_string(sensor_id.value()) : "NONE");
                     // /* Direct calls contain promise that they are waiting for */
                     // if (sync_task.request.second.has_value())
                     // {
@@ -411,6 +435,7 @@ namespace uc
                         last_drop_sensor = sensor_id.value();
                     }
 
+                    mik::logger::debug("Execute callback for drop sensor change");
                     if (drop_sensor_state_change_cb_ctx.callback)
                     {
                         pool.detach_task([this, sensor_id]()
@@ -419,6 +444,7 @@ namespace uc
                     /* Task completed */
                     sync_task.present = false;
 
+                    mik::logger::debug("Send reset status request to serial port");
                     /* Send message to serial port to reset detected status */
                     auto wr_res = virt_port.write(RESET_STATUS, 1000);
                     if (!wr_res)
@@ -427,13 +453,14 @@ namespace uc
                         connected = false;
                         continue;
                     }
-
+                    mik::logger::debug("Wait for low DSR state to be sure that status reset is done");
                     virt_port.wait_for_low_dsr(500, 2000);
                 }
             }
             else if (sync_task.request.first == DCD_HIGH || sync_task.request.first == DCD_LOW)
             {
                 auto state = DCD_HIGH ? true : false;
+                mik::logger::debug("Response to request {}: {}", sync_task.request.first, state);
 
                 if (main_sensor_state_change_cb_ctx.callback)
                 {
@@ -445,6 +472,7 @@ namespace uc
             }
             else if (sync_task.request.first == LAST_DROP_SENSOR)
             {
+                mik::logger::debug("Response to request {}: {}", sync_task.request.first, last_drop_sensor);
                 /* Direct calls contain promise that they are waiting for */
                 if (sync_task.request.second.has_value())
                 {
@@ -456,6 +484,7 @@ namespace uc
             }
             else if (sync_task.request.first == MAIN_SENSOR)
             {
+                mik::logger::debug("Sending request to serial port to get DCD state");
                 auto state = virt_port.get_dcd();
                 if (!state.has_value())
                 {
@@ -474,6 +503,21 @@ namespace uc
                 /* Task completed */
                 sync_task.present = false;
             }
+            else if (sync_task.request.first.contains(SET_LED) ||
+                     sync_task.request.first == RESET_RI)
+            {
+                mik::logger::debug("Sending fire-and-forget message to serial port: {}", sync_task.request.first);
+                auto wr_res = virt_port.write(sync_task.request.first, 1000);
+                if (!wr_res)
+                {
+                    mik::logger::error("Failed to write to serial port in sync worker : {}", wr_res.error());
+                    connected = false;
+                    continue;
+                }
+                /* Task completed */
+                sync_task.present = false;
+                /* Write and omit readback from serial port, no need to wait for response, just send it and forget it */
+            }
         }
 
         // NOTE: peripheral job will be stopped in destructor, so no need to stop it here
@@ -485,9 +529,10 @@ namespace uc
         auto fut = prom.get_future();
         request_queue.emplace_front(request.data(), std::make_optional(std::move(prom)));
 
-        if (std::holds_alternative<std::string>(fut.get()))
+        auto result = fut.get();
+        if (std::holds_alternative<std::string>(result))
         {
-            return std::get<std::string>(fut.get());
+            return std::get<std::string>(result);
         }
 
         mik::logger::error("Not valid promise type for create_request");
@@ -523,9 +568,10 @@ namespace uc
         auto fut = prom.get_future();
         request_queue.emplace_front(LAST_DROP_SENSOR, std::make_optional(std::move(prom)));
 
-        if (std::holds_alternative<int>(fut.get()))
+        auto result = fut.get();
+        if (std::holds_alternative<int>(result))
         {
-            return std::get<int>(fut.get());
+            return std::get<int>(result);
         }
         mik::logger::error("Not valid promise type for get_last_drop_sensor_req");
         throw std::runtime_error("Not valid promise type for get_last_drop_sensor_req");
@@ -536,9 +582,10 @@ namespace uc
         auto fut = prom.get_future();
         request_queue.emplace_front(MAIN_SENSOR, std::make_optional(std::move(prom)));
 
-        if (std::holds_alternative<bool>(fut.get()))
+        auto result = fut.get();
+        if (std::holds_alternative<bool>(result))
         {
-            return std::get<bool>(fut.get());
+            return std::get<bool>(result);
         }
         mik::logger::error("Not valid promise type for get_main_sensor_req");
         throw std::runtime_error("Not valid promise type for get_main_sensor_req");
@@ -559,7 +606,7 @@ namespace uc
             return false;
         }
 
-        std::string request = std::format("Set_Led={},{},{},{}", number, red, green, blue);
+        std::string request = std::format("Set_Led={},{},{},{}\r\n", number, red, green, blue);
 
         create_request_ff(request);
 
@@ -585,18 +632,17 @@ namespace uc
             std::unordered_map<std::string, std::string> serial_ports{
                 {"Pico SYNC", ""},
                 {"Pico ASYNC", ""},
-                {"STMicroelectronics Virtual COM Port", ""}};
+                {"STM32 CDC INTERFACE", ""}};
 
             get_serial_ports(serial_ports);
 
-            if (serial_ports["Pico SYNC"].empty() || serial_ports["Pico ASYNC"].empty() || serial_ports["STM32"].empty())
+            if (serial_ports["STM32 CDC INTERFACE"].empty())
             {
-                mik::logger::error("Cannot find tty for Pico SYNC or Pico ASYNC");
+                mik::logger::error("Cannot find tty for STM32 CDC INTERFACE");
                 return -1;
             }
 
-            worker_thr = std::jthread(std::bind_front(&stm::worker, this), serial_ports["STMicroelectronics Virtual COM Port"]);
-            // irq_thr = std::jthread(std::bind_front(&stm::irq_worker, this), serial_ports["Pico ASYNC"]);
+            worker_thr = std::jthread(std::bind_front(&stm::worker, this), serial_ports["STM32 CDC INTERFACE"]);
             return 0;
         }
     };

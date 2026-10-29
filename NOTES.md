@@ -35,3 +35,8 @@ Install the project...
 #or
 sudo cmake --install build
 ```
+
+* uninstall
+```shell
+sudo xargs rm -f < build/install_manifest.txt
+```

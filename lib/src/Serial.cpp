@@ -383,12 +383,9 @@ namespace com
         //     printf("RI changed! (Count: %d -> %d)\n", before.rng, after.rng);
         //     return {};
         // }
-        else
-        {
-            printf("After:  CTS=%d, DSR=%d, RNG=%d, DCD=%d\n", after.cts, after.dsr, after.rng, after.dcd);
-        }
 
-        return std::unexpected("Unexpected change detected!");
+
+        return std::unexpected(std::format("Unexpected change detected! After:  CTS={}/{}, DSR={}/{}, RNG={}/{}, DCD={}/{}\n", after.cts, arg & TIOCM_CTS, after.dsr, arg & TIOCM_DSR, after.rng, arg & TIOCM_RI, after.dcd, arg & TIOCM_CD));
     }
 
     expect<void> Serial::unlock_wait_notification(std::string_view data)

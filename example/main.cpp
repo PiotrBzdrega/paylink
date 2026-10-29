@@ -166,17 +166,46 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
         int credit = currentCredit();
         log_menu.addElement(std::format("Current credit: {}", credit));
     }
-    else if (commmandName[selectedCommand] == "getSensorsState()")
+    else if (commmandName[selectedCommand] == "getLastDropSensor()")
     {
         const int sensor = getLastDropSensor();
         if (sensor != -1)
         {
-            log_menu.addElement(std::format("Sensors state: {}", sensor));
+            log_menu.addElement(std::format("Last drop sensor state: {}", sensor));
         }
         else
         {
-            log_menu.addElement("Invalid Sensors state:");
+            log_menu.addElement("Invalid drop sensor state:");
         }
+    }
+    else if (commmandName[selectedCommand] == "setSensorLed(1, 4095, 0, 0)")
+    {
+        setSensorLed(1, 4095, 0, 0);
+    }
+    else if (commmandName[selectedCommand] == "setSensorLed(1, 0, 4095, 0)")
+    {
+        setSensorLed(1, 0, 4095, 0);
+    }
+    else if (commmandName[selectedCommand] == "setSensorLed(1, 0, 0, 4095)")
+    {
+        setSensorLed(1, 0, 0, 4095);
+    }
+    else if (commmandName[selectedCommand] == "setAllSensorLeds(4095, 0, 0)")
+    {
+        setAllSensorLed(4095, 0, 0);
+    }
+    else if (commmandName[selectedCommand] == "setAllSensorLeds(0, 4095, 0)")
+    {
+        setAllSensorLed(0, 4095, 0);
+    }
+    else if (commmandName[selectedCommand] == "setAllSensorLeds(0, 0, 4095)")
+    {
+        setAllSensorLed(0, 0, 4095);
+    }
+    else if (commmandName[selectedCommand] == "getMainSensor()")
+    {
+        const bool sensor = getMainSensor();
+        log_menu.addElement(std::format("Main sensor state: {}", sensor));
     }
     else if (commmandName[selectedCommand] == "getButtonsState()")
     {
@@ -264,7 +293,7 @@ public:
                 "\n"
                 "[module]\n"
                 "# DISABLED, STUB, ENABLED\n"
-                "# pn532 = \"DISABLED\"\n"
+                "pn532 = \"DISABLED\"\n"
                 "# stm = \"DISABLED\"\n"
                 "acceptor = \"STUB\"\n");
 
@@ -302,7 +331,11 @@ int main()
                                               auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
                                               component->addElement(std::format("Sensors state changed: {}", sensor)); },
                                      static_cast<void *>(&callbackElements)); // Set sensors state change callback
-
+    setMainSensorChangeCallbackCtx([](const bool state, void *user_data)
+                                     {
+                                              auto *component = static_cast<AdaptiveMenu<std::string> *>(user_data);
+                                              component->addElement(std::format("Main sensor state changed: {}", state)); },
+                                     static_cast<void *>(&callbackElements)); // Set main sensor state change callback
     std::vector<std::string> commmandName =
         {
             "getVersion()",
@@ -316,7 +349,14 @@ int main()
             "setLED(1, true, 1000)",
             "levelOfCoins()",
             "currentCredit()",
-            "getSensorsState()",
+            "setSensorLed(1, 4095, 0, 0)",
+            "setSensorLed(1, 0, 4095, 0)",
+            "setSensorLed(1, 0, 0, 4095)",
+            "setAllSensorLeds(4095, 0, 0)",
+            "setAllSensorLeds(0, 4095, 0)",
+            "setAllSensorLeds(0, 0, 4095)",
+            "getLastDropSensor()",
+            "getMainSensor()",
             "getButtonsState()",
             "Exit"};
     int selectedCommand{};

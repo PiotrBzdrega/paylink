@@ -19,13 +19,10 @@ namespace uc
         MainSensorChangeCallbackCtx main_sensor_state_change_cb_ctx;
         DropSensorChangeCallbackCtx drop_sensor_state_change_cb_ctx;
         std::string signals;
-        // std::jthread irq_thr;
         std::jthread worker_thr;
         BS::thread_pool<> &pool;
         com::thread_safe_queue<std::pair<std::string, std::optional<RequestPromise>>> request_queue;
-        int last_drop_sensor;
-        // void sync_worker(std::stop_token stop_token, std::string_view channel_name);
-        // void irq_worker(std::stop_token stop_token, std::string_view channel_name);
+        int last_drop_sensor{};
         void worker(std::stop_token stop_token, std::string_view channel_name);
         std::string create_request(std::string_view request);
         /**

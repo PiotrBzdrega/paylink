@@ -139,7 +139,7 @@ extern "C"
     {
         if (handle)
         {
-            return handle->get_buttons_state();
+            return handle->get_main_sensor();
         }
         return false;
     }

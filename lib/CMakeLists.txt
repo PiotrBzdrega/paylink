@@ -57,7 +57,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     aes_access
     stdc++
     nfc
-    # usb-1.0
     udev
 )
 
