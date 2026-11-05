@@ -293,7 +293,7 @@ namespace uc
         } sync_task;
 
         peripheral_job periph_job{[&virt_port, this](std::mutex &mtx,
-                                                     std::condition_variable &cv, bool &done)
+                                                     std::condition_variable &cv, JobState &state)
                                   {
                                       // TODO: what if wait_for_notification crash but sertial still operateable -> reconnect
                                       mik::logger::debug("Peripheral job started, waiting for notification");
@@ -301,8 +301,8 @@ namespace uc
                                       {
                                           mik::logger::debug("Peripheral job finished, notification received, start locking mutex");
                                           std::unique_lock<std::mutex> lock(mtx);
-                                          done = true;
-                                          cv.notify_one();
+                                          state = JobState::DONE;
+                                          cv.notify_all();
                                           mik::logger::debug("Peripheral job finished, notification received, mutex unlocked");
                                       }
 
@@ -334,6 +334,7 @@ namespace uc
                                   },
                                   [&virt_port]()
                                   {
+                                      mik::logger::debug("Peripheral job stop requested by cancel_job, unlocking wait for notification");
                                       virt_port.unlock_wait_notification(SET_RI);
                                   }};
 
@@ -454,7 +455,17 @@ namespace uc
                         continue;
                     }
                     mik::logger::debug("Wait for low DSR state to be sure that status reset is done");
-                    virt_port.wait_for_low_dsr(500, 2000);
+                    auto wait_result = virt_port.wait_for_low_dsr(500, 2000);
+                    if (!wait_result)
+                    {
+                        mik::logger::error("Failed to wait for low DSR state in sync worker : {}", wait_result.error());
+                        // connected = false; // TODO: consider reconnect
+                        // continue;
+                    }
+                    else
+                    {
+                        mik::logger::debug("Low DSR state detected, status reset done");
+                    }
                 }
             }
             else if (sync_task.request.first == DCD_HIGH || sync_task.request.first == DCD_LOW)

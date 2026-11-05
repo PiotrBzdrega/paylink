@@ -6,12 +6,24 @@ namespace uc
     {
         while (!stop_token.stop_requested())
         {
-            job_(mtx_,cv_,done_);
+
+            {
+                // mik::logger::debug("Peripheral job started, locking mutex");
+                std::lock_guard<std::mutex> lock(mtx_);
+                state_ = JobState::RUNNING;
+                cv_.notify_one();
+                // mik::logger::debug("Peripheral job started, mutex unlocked");
+            }
+
+            job_(mtx_, cv_, state_);
+
+            // TODO: create class so job will do fallback_done() in destructor if not done, so we will not have to call it here, same with running state
+            fallback_done();
 
             {
                 std::unique_lock<std::mutex> lock(mtx_);
                 cv_.wait(lock, [this]
-                         { return !done_; });
+                         { return state_ == JobState::RESUMED; });
             }
         }
     }
@@ -19,27 +31,37 @@ namespace uc
     bool peripheral_job::resume()
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        if (!done_)
+        if (state_ == JobState::RUNNING)
         {
             return false; // Job is still running
         }
 
-        done_ = false;
-        cv_.notify_one();
+        state_ = JobState::RESUMED;
+        cv_.notify_all();
         return true;
     }
 
     bool peripheral_job::done()
     {
         std::unique_lock<std::mutex> lock(mtx_);
-        return done_;
+        return state_ == JobState::DONE;
+    }
+
+    void peripheral_job::fallback_done()
+    {
+        std::unique_lock<std::mutex> lock(mtx_);
+        if (state_ == JobState::RUNNING)
+        {
+            state_ = JobState::DONE;
+            cv_.notify_all();
+        }
     }
 
     void peripheral_job::wait_for_completion()
     {
         std::unique_lock<std::mutex> lock(mtx_);
         cv_.wait(lock, [this]
-                 { return done_; });
+                 { return state_ == JobState::DONE; });
     }
 
     void peripheral_job::stop()
@@ -51,7 +73,11 @@ namespace uc
             {
                 // If the worker is still running, we can call cancel_job_ to stop it
                 cancel_job_();
-                wait_for_completion();
+
+                while (!resume()) // Wait until the job is done
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
             }
 
             worker_.join();

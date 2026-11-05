@@ -202,6 +202,10 @@ void action(ScreenInteractive &screen, std::vector<std::string> &commmandName, i
     {
         setAllSensorLed(0, 0, 4095);
     }
+    else if (commmandName[selectedCommand] == "setAllSensorLeds(0, 0, 0)")
+    {
+        setAllSensorLed(0, 0, 0);
+    }
     else if (commmandName[selectedCommand] == "getMainSensor()")
     {
         const bool sensor = getMainSensor();
@@ -355,6 +359,7 @@ int main()
             "setAllSensorLeds(4095, 0, 0)",
             "setAllSensorLeds(0, 4095, 0)",
             "setAllSensorLeds(0, 0, 4095)",
+            "setAllSensorLeds(0, 0, 0)",
             "getLastDropSensor()",
             "getMainSensor()",
             "getButtonsState()",

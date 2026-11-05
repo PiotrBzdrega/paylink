@@ -1,4 +1,5 @@
 #include "Serial.h"
+#include "logger.h"
 #include <format>
 #include <optional>
 #include <string.h> //strerror
@@ -156,10 +157,12 @@ namespace com
                 // Select was interrupted
                 if (errno == EINTR)
                 {
+                    mik::logger::debug("Select was interrupted by signal, retrying...");
                     continue;
                 }
                 else
                 {
+                    mik::logger::error("Select failed with error: {}:{}", strerror(errno), errno);
                     // Otherwise there was some error
                     return std::unexpected(std::format("{}:{}", strerror(errno), errno));
                 }
@@ -168,11 +171,13 @@ namespace com
             /* Timeout occurred */
             if (res == 0)
             {
+                mik::logger::error("Select timed out after {} ms with {} bytes read", timeout_ms, bytes_readed);
                 return std::unexpected(std::format("Timeout! with {} bytes received", bytes_readed));
             }
 
             if (FD_ISSET(event_fd_, &readfds))
             {
+                mik::logger::debug("Received notification to interrupt blocking select()!");
                 return std::unexpected("notification to interrupt blocking select()!");
             }
 
@@ -188,12 +193,14 @@ namespace com
                     }
                     else
                     {
+                        mik::logger::error("read {}:{}", strerror(errno), errno);
                         return std::unexpected(std::format("read {}:{}", strerror(errno), errno));
                     }
                 }
                 /*  TODO:?? */
                 if (read_res == 0)
                 {
+                    mik::logger::error("No data read from serial port, but select indicated data is available!");
                     return std::unexpected("No data read from serial port, but select indicated data is available!");
                 }
 
@@ -205,8 +212,10 @@ namespace com
                 }
                 else
                 {
+                    mik::logger::debug("Predicate not satisfied, continuing to read more data, bytes_readed: {}", bytes_readed);
                     if (bytes_readed == static_cast<int>(r_buffer_.size()))
                     {
+                        mik::logger::error("Cannot read more data, buffer is full but predicate is not satisfied!");
                         return std::unexpected("Cannot read more data, buffer is full but predicate is not satisfied!");
                     }
 
@@ -301,6 +310,7 @@ namespace com
     {
         if (tty_fd_ == -1)
         {
+            mik::logger::error("Serial port not open, cannot wait for notification");
             return std::unexpected("Serial port not open");
         }
 
@@ -308,18 +318,19 @@ namespace com
         /* Get modem status lines */
         if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
         {
+            mik::logger::error("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno));
             return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
         }
 
         if (arg & TIOCM_DSR)
         {
-            printf("DSR is high!");
+            mik::logger::debug("DSR is high!");
             return NotificationType::DSR;
         }
 
         if (arg & TIOCM_RI)
         {
-            printf("RI is high!");
+            mik::logger::debug("RI is high!");
             return NotificationType::RI;
         }
 
@@ -337,54 +348,56 @@ namespace com
             return std::unexpected(std::format("TIOCGICOUNT: Failed to get serial counter values; errno, strerror(errno): {} {}", errno, strerror(errno)));
         }
 
-        printf("Before:  CTS=%d, DSR=%d, RNG=%d, DCD=%d\n", before.cts, before.dsr, before.rng, before.dcd);
-
+        mik::logger::debug("Before:  CTS={}, DSR={}, RNG={}, DCD={}", before.cts, before.dsr, before.rng, before.dcd);
         /* Data Set Ready  - drop sensor change detected, Data Carrier Detect - main sensor change, Ring Indicator - We decided to stop TIOCMIWAIT */
         if (ioctl(tty_fd_, TIOCMIWAIT, TIOCM_DSR | TIOCM_CD | TIOCM_RI) < 0)
         {
+            mik::logger::error("TIOCMIWAIT: Failed in waiting for notification; errno, strerror(errno): {} {}", errno, strerror(errno));
             return std::unexpected(std::format("TIOCMIWAIT: Failed in waiting for notification; errno, strerror(errno): {} {}", errno, strerror(errno)));
         }
 
         /* Get modem status lines */
         if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
         {
+            mik::logger::error("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno));
             return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
         }
 
         if (arg & TIOCM_DSR)
         {
-            printf("DSR is high!");
+            mik::logger::debug("DSR is high!");
             return NotificationType::DSR;
         }
 
         if (arg & TIOCM_RI)
         {
-            printf("RI is high!");
+            mik::logger::debug("RI is high!");
             return NotificationType::RI;
         }
 
         /* Get state after notification */
         if (ioctl(tty_fd_, TIOCGICOUNT, &after) < 0)
         {
+            mik::logger::error("TIOCGICOUNT: Failed to get serial counter values after notification; errno, strerror(errno): {} {}", errno, strerror(errno));
             return std::unexpected(std::format("TIOCGICOUNT: Failed to get serial counter values after notification; errno, strerror(errno): {} {}", errno, strerror(errno)));
         }
         // if (after.dsr != before.dsr)
         // {
-        //     printf("DSR changed! (Count: %d -> %d)\n", before.cts, after.cts);
+        //     mik::logger::debug("DSR changed! (Count: {} -> {})", before.cts, after.cts);
         //     return std::unexpected("DSR changed!");
         // }
         if (after.dcd != before.dcd)
         {
-            printf("DCD changed! (Count: %d -> %d)\n", before.dcd, after.dcd);
+            mik::logger::debug("DCD changed! (Count: {} -> {})", before.dcd, after.dcd);
             return NotificationType::DCD;
         }
         // else if (after.rng != before.rng)
         // {
-        //     printf("RI changed! (Count: %d -> %d)\n", before.rng, after.rng);
+        //     mik::logger::debug("RI changed! (Count: {} -> {})", before.rng, after.rng);
         //     return {};
         // }
 
-
+        mik::logger::error("Unexpected change detected! After:  CTS={}/{}, DSR={}/{}, RNG={}/{}, DCD={}/{}", after.cts, arg & TIOCM_CTS, after.dsr, arg & TIOCM_DSR, after.rng, arg & TIOCM_RI, after.dcd, arg & TIOCM_CD);
         return std::unexpected(std::format("Unexpected change detected! After:  CTS={}/{}, DSR={}/{}, RNG={}/{}, DCD={}/{}\n", after.cts, arg & TIOCM_CTS, after.dsr, arg & TIOCM_DSR, after.rng, arg & TIOCM_RI, after.dcd, arg & TIOCM_CD));
     }
 
@@ -392,15 +405,18 @@ namespace com
     {
         if (tty_fd_ == -1)
         {
+            mik::logger::error("Serial port not open, cannot unlock wait for notification");
             return std::unexpected("Serial port not open");
         }
         /* Write wakeup data */
         if (auto res = write(data); !res)
         {
+            mik::logger::error("Failed to write wakeup data to serial port: {}", res.error());
             return std::unexpected(res.error());
         }
         else
         {
+            mik::logger::debug("Wrote wakeup data to serial port: {} bytes", res.value());
             return {};
         }
     }

@@ -8,23 +8,32 @@
 
 namespace uc
 {
+    enum class JobState
+    {
+        RUNNING,
+        RESUMED,
+        DONE
+    };
+
     class peripheral_job
     {
     private:
         std::move_only_function<void(std::mutex &mtx,
-                                                     std::condition_variable &cv, bool &done)> job_;
+                                                     std::condition_variable &cv, JobState &state)> job_;
         std::move_only_function<void()> cancel_job_;
         std::mutex mtx_;
         std::condition_variable cv_;
         std::jthread worker_;
-        bool done_{false};
+        JobState state_{JobState::RESUMED};
+
         void run(std::stop_token stop_token);
 
     public:
         peripheral_job(std::move_only_function<void(std::mutex &mtx,
-                                                     std::condition_variable &cv, bool &done)> &&job , std::move_only_function<void()> &&cancel_job) : job_(std::move(job)) , cancel_job_(std::move(cancel_job) ) {}
+                                                     std::condition_variable &cv, JobState &state)> &&job , std::move_only_function<void()> &&cancel_job) : job_(std::move(job)) , cancel_job_(std::move(cancel_job) ) {}
         bool resume();
         bool done();
+        void fallback_done();
         void wait_for_completion();
         void start()
         {
