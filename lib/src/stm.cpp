@@ -4,7 +4,6 @@
 #include <functional>
 #include <libudev.h>
 #include <stdio.h>
-#include "serial.h"
 #include "logger.h"
 #include "stm.h"
 #include "Serial.h"
