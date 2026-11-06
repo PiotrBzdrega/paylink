@@ -569,7 +569,6 @@ namespace uc
             worker_thr.request_stop();
             worker_thr.join();
         }
-
         mik::logger::trace("stm destructor end");
     }
 

@@ -49,7 +49,7 @@ extern "C"
     getLastDropSensor();
 
     void
-    setSensorLed(uint8_t number, uint16_t red, uint16_t green, uint16_t blue);
+    setSensorLed(uint16_t number, uint16_t red, uint16_t green, uint16_t blue);
 
     void
     setAllSensorLed(uint16_t red, uint16_t green, uint16_t blue);

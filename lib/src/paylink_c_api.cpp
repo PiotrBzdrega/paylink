@@ -155,7 +155,7 @@ extern "C"
         return -1;
     }
 
-    void setSensorLed(uint8_t number, uint16_t red, uint16_t green, uint16_t blue)
+    void setSensorLed(uint16_t number, uint16_t red, uint16_t green, uint16_t blue)
     {
         if (handle)
         {

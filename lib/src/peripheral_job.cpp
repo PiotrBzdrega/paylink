@@ -1,4 +1,5 @@
 #include "peripheral_job.h"
+#include "logger.h"
 
 namespace uc
 {
@@ -17,6 +18,7 @@ namespace uc
 
             job_(mtx_, cv_, state_);
 
+            mik::logger::trace("Peripheral job finished, waiting for resume signal");
             // TODO: create class so job will do fallback_done() in destructor if not done, so we will not have to call it here, same with running state
             fallback_done();
 
@@ -25,7 +27,9 @@ namespace uc
                 cv_.wait(lock, [this]
                          { return state_ == JobState::RESUMED; });
             }
+            mik::logger::trace("Peripheral job resumed, starting next iteration");
         }
+        mik::logger::trace("Peripheral job stop requested, exiting run loop");
     }
 
     bool peripheral_job::resume()
