@@ -251,6 +251,19 @@ systemInfo()
     return info;
 }
 
+void freeSystemInfo(SystemInfo *info)
+{
+    if (info)
+    {
+        freeString(info->platform_type);
+        freeString(info->firmware_version);
+        freeString(info->serial_number);
+        freeString(info->dispenser_unit);
+        freeString(info->dispenser_serial_number);
+        freeString(info->acceptor_unit);
+        freeString(info->acceptor_serial_number);
+    }
+}
 void freeString(const char *str)
 {
     delete[] str;
