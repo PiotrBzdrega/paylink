@@ -29,6 +29,8 @@ namespace com
         int tty_fd_{-1};   // file descriptor for serial port
         std::array<char, 1024> r_buffer_;
         std::array<char, 1024> wr_buffer_;
+        expect<bool> get(int modem_line);
+        expect<void> wait_for(int modem_line, bool expected_state, uint32_t interval_ms, uint32_t timeout_ms);
 
     public:
         Serial(std::string_view port /* , int baudrate */);
@@ -42,7 +44,9 @@ namespace com
         expect<void> unlock_wait_notification(std::string_view data);
         expect<bool> get_dcd();
         expect<bool> get_dsr();
+        expect<bool> get_ri();
         expect<void> wait_for_low_dsr(uint32_t interval_ms = 500, uint32_t timeout_ms = 2000);
+        expect<void> wait_for_low_ri(uint32_t interval_ms = 500, uint32_t timeout_ms = 2000);
         void interrupt_wait();
     };
 }

@@ -26,6 +26,50 @@ namespace com
         }
     }
 
+    expect<bool> Serial::get(int modem_line)
+    {
+        if (tty_fd_ == -1)
+        {
+            return std::unexpected("Serial port not open");
+        }
+
+        unsigned int arg;
+
+        /* Get modem status lines */
+        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
+        {
+            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
+        }
+        return !!(arg & modem_line);
+    }
+
+    expect<void> Serial::wait_for(int modem_line, bool expected_state, uint32_t interval_ms, uint32_t timeout_ms)
+    {
+        auto rem_timeout_ms = timeout_ms;
+        while (true)
+        {
+            if (auto status = get(modem_line); !status)
+            {
+                return std::unexpected(status.error());
+            }
+            else if (status.value() == expected_state)
+            {
+                break;
+            }
+            else
+            {
+                usleep(interval_ms * 1000);
+                rem_timeout_ms -= interval_ms;
+
+                if (rem_timeout_ms <= interval_ms)
+                {
+                    return std::unexpected(std::format("Timeout waiting for {}", modem_line));
+                }
+            }
+        }
+        return expect<void>();
+    }
+
     Serial::Serial(std::string_view port /* , int baudrate */) : port_(port),
                                                                  event_fd_(eventfd(0, 0))
 
@@ -423,63 +467,27 @@ namespace com
 
     expect<bool> Serial::get_dcd()
     {
-        if (tty_fd_ == -1)
-        {
-            return std::unexpected("Serial port not open");
-        }
-
-        unsigned int arg;
-
-        /* Get modem status lines */
-        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
-        {
-            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
-        }
-        return !!(arg & TIOCM_CAR);
+        return get(TIOCM_CAR);
     }
 
     expect<bool> Serial::get_dsr()
     {
-        if (tty_fd_ == -1)
-        {
-            return std::unexpected("Serial port not open");
-        }
+        return get(TIOCM_DSR);
+    }
 
-        unsigned int arg;
-
-        /* Get modem status lines */
-        if (ioctl(tty_fd_, TIOCMGET, &arg) < 0)
-        {
-            return std::unexpected(std::format("TIOCMGET: Failed to get states of modem lines; errno, strerror(errno): {} {}", errno, strerror(errno)));
-        }
-        return !!(arg & TIOCM_DSR);
+    expect<bool> Serial::get_ri()
+    {
+        return get(TIOCM_RI);
     }
 
     expect<void> Serial::wait_for_low_dsr(uint32_t interval_ms, uint32_t timeout_ms)
     {
-        auto rem_timeout_ms = timeout_ms;
-        while (true)
-        {
-            if (auto dsr = get_dsr(); !dsr)
-            {
-                return std::unexpected(dsr.error());
-            }
-            else if (!dsr.value())
-            {
-                break;
-            }
-            else
-            {
-                usleep(interval_ms * 1000);
-                rem_timeout_ms -= interval_ms;
+        return wait_for(TIOCM_DSR, false, interval_ms, timeout_ms);
+    }
 
-                if (rem_timeout_ms <= interval_ms)
-                {
-                    return std::unexpected("Timeout waiting for low DSR");
-                }
-            }
-        }
-        return {};
+    expect<void> Serial::wait_for_low_ri(uint32_t interval_ms, uint32_t timeout_ms)
+    {
+        return wait_for(TIOCM_RI, false, interval_ms, timeout_ms);
     }
 
     void Serial::interrupt_wait()

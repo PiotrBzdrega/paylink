@@ -284,6 +284,7 @@ namespace uc
     {
         com::Serial virt_port{channel_name};
         bool connected{false};
+        bool init_done{false};
 
         struct sync_task_t
         {
@@ -350,6 +351,7 @@ namespace uc
                 mik::logger::trace("Failed to connect to serial port in worker: {}", res.error());
                 mik::logger::trace("Try to stop peripheral job");
                 periph_job.stop();
+                init_done = false; // NOTE: after reconnect stm board leaves locked STATUS, but DSR can be low, so we need to reset it
                 std::this_thread::sleep_for(std::chrono::seconds(10));
                 continue;
             }
@@ -364,8 +366,51 @@ namespace uc
             }
             else
             {
-                mik::logger::debug("Serial port reconnected successfull");
+                mik::logger::debug("Serial port reconnected successfully");
                 connected = true;
+
+                /* Initialize serial port - clean buffer */
+                if (!init_done)
+                {
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        mik::logger::trace("Send message to serial port to clean DSR & RI & STATUS");
+                        auto wr_res = virt_port.write(RESET_STATUS, 1000);
+                        if (!wr_res)
+                        {
+                            mik::logger::error("Failed to write to serial port in sync worker : {}", wr_res.error());
+                            break;
+                        }
+                        mik::logger::trace("Wait for low DSR state to be sure that status reset is done");
+                        auto wait_dsr_result = virt_port.wait_for_low_dsr(500, 2000);
+                        if (!wait_dsr_result)
+                        {
+                            mik::logger::error("Failed to wait for low DSR state in sync worker : {}", wait_dsr_result.error());
+                        }
+                        else
+                        {
+                            mik::logger::trace("Low DSR state detected");
+
+                            auto wait_ri_result = virt_port.wait_for_low_ri(500, 2000);
+                            if (!wait_ri_result)
+                            {
+                                mik::logger::error("Failed to wait for low RI state in sync worker : {}", wait_ri_result.error());
+                            }
+                            else
+                            {
+                                init_done = true;
+                                mik::logger::trace("Low RI state detected, status reset done");
+                            }
+                        }
+                    }
+                    if (!init_done)
+                    {
+                        mik::logger::error("Failed to initialize serial port, will try to reconnect");
+                        connected = false;
+                        continue;
+                    }
+                };
+
                 periph_job.start();
                 if (periph_job.done())
                 {
