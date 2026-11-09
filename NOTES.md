@@ -34,6 +34,9 @@ Install the project...
 
 #or
 sudo cmake --install build
+
+# copy to dotnet
+sudo cp /usr/local/lib/libpaylink.so* "/usr/lib/dotnet/shared/Microsoft.NETCore.App/$(ls /usr/lib/dotnet/shared/Microsoft.NETCore.App | sort -V | tail -n1)"
 ```
 
 * uninstall

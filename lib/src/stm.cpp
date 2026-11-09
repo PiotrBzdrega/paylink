@@ -20,6 +20,7 @@ namespace uc
         constexpr auto MAIN_SENSOR{"MAIN_SENSOR"};
         constexpr auto SET_LED{"Set_Led"};
         constexpr auto EXIT_MSG{"EXIT"};
+        constexpr auto UNEXPECTED{"UNEXPECTED"};
 
         constexpr auto STATUS{"ADC_SPIKE_STATUS\r\n"};
         constexpr auto RESET_STATUS{"ADC_RES\r\n"};
@@ -330,6 +331,7 @@ namespace uc
                                       else
                                       {
                                           mik::logger::error("Failed to wait for notification in peripheral job: {}", notification.error());
+                                          this->create_request_ff(UNEXPECTED);
                                       }
                                   },
                                   [&virt_port]()
@@ -400,6 +402,7 @@ namespace uc
                             {
                                 init_done = true;
                                 mik::logger::trace("Low RI state detected, status reset done");
+                                break; // Exit the loop if initialization is successful
                             }
                         }
                     }
@@ -573,6 +576,17 @@ namespace uc
                 sync_task.present = false;
                 /* Write and omit readback from serial port, no need to wait for response, just send it and forget it */
             }
+            else if (sync_task.request.first == UNEXPECTED)
+            {
+                mik::logger::error("Received UNEXPECTED request, [FIX IT] skipping to resume peripheral job");
+                /* Task completed */
+                sync_task.present = false;
+            }
+            else
+            {
+                /* code */
+            }
+            
         }
 
         // NOTE: peripheral job will be stopped in destructor, so no need to stop it here
