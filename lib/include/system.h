@@ -52,6 +52,7 @@ namespace paylink
         sensors_t sensors;
         std::mutex mtx_dispense_coins;
         std::mutex mtx_set_motor;
+        std::mutex mtx_set_led;
         struct ConfigT
         {
             struct LoggerT

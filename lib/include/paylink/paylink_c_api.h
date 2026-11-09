@@ -70,10 +70,18 @@ extern "C"
     currentCredit();
 
     /**
-     * @brief Get the system status (requires more time than single command to obtain the status )
+     * @brief Gets system information. Returns 0 when the request was performed;
+     *        inspect info->result for the device query result. Returns -1 if
+     *        the output pointer is null, the system is unavailable, or an error occurs.
+     *        The output must be empty or previously released with freeSystemInfo.
      */
-    struct SystemInfo
-    systemInfo();
+    int
+    systemInfo(struct SystemInfo *info);
+
+    /**
+     * @brief Releases strings owned by SystemInfo. Safe to call with null or repeatedly.
+     */
+    void freeSystemInfo(struct SystemInfo *info);
 
     void
     freeString(const char *str);

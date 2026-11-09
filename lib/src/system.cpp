@@ -586,6 +586,9 @@ namespace paylink
     void
     system::set_led(int number, bool on, uint32_t interval_ms)
     {
+        /* This call must be exclusive to disallow concurrent calls */
+        std::lock_guard<std::mutex> lck(mtx_set_led);
+
         if (led_pending_task_map.contains(number))
         {
             auto task_no = led_pending_task_map[number];

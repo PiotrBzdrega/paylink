@@ -1,5 +1,6 @@
 #include "paylink/paylink_c_api.h"
 #include <cstring>
+#include <exception>
 #include "system.h"
 
 static std::unique_ptr<paylink::system> handle;
@@ -219,50 +220,73 @@ extern "C"
     }
 }
 
-struct SystemInfo
-systemInfo()
+int systemInfo(SystemInfo *info)
 {
-    SystemInfo info{};
-    if (handle)
+    if (!info)
+    {
+        return -1;
+    }
+
+    *info = SystemInfo{};
+    if (!handle)
+    {
+        return -1;
+    }
+
+    try
     {
         auto system_info = handle->info();
+        info->result = system_info.result;
+        if (!system_info.result)
+        {
+            return 0;
+        }
 
-        info.platform_type = new char[system_info.platform_type.size() + 1];
-        std::memcpy(info.platform_type, system_info.platform_type.c_str(), system_info.platform_type.size() + 1);
+        info->platform_type = new char[system_info.platform_type.size() + 1];
+        std::memcpy(info->platform_type, system_info.platform_type.c_str(), system_info.platform_type.size() + 1);
 
-        info.firmware_version = new char[system_info.firmware_version.size() + 1];
-        std::memcpy(info.firmware_version, system_info.firmware_version.c_str(), system_info.firmware_version.size() + 1);
+        info->firmware_version = new char[system_info.firmware_version.size() + 1];
+        std::memcpy(info->firmware_version, system_info.firmware_version.c_str(), system_info.firmware_version.size() + 1);
 
-        info.serial_number = new char[system_info.serial_number.size() + 1];
-        std::memcpy(info.serial_number, system_info.serial_number.c_str(), system_info.serial_number.size() + 1);
+        info->serial_number = new char[system_info.serial_number.size() + 1];
+        std::memcpy(info->serial_number, system_info.serial_number.c_str(), system_info.serial_number.size() + 1);
 
-        info.dispenser_unit = new char[system_info.dispenser_unit.size() + 1];
-        std::memcpy(info.dispenser_unit, system_info.dispenser_unit.c_str(), system_info.dispenser_unit.size() + 1);
+        info->dispenser_unit = new char[system_info.dispenser_unit.size() + 1];
+        std::memcpy(info->dispenser_unit, system_info.dispenser_unit.c_str(), system_info.dispenser_unit.size() + 1);
 
-        info.dispenser_serial_number = new char[system_info.dispenser_serial_number.size() + 1];
-        std::memcpy(info.dispenser_serial_number, system_info.dispenser_serial_number.c_str(), system_info.dispenser_serial_number.size() + 1);
+        info->dispenser_serial_number = new char[system_info.dispenser_serial_number.size() + 1];
+        std::memcpy(info->dispenser_serial_number, system_info.dispenser_serial_number.c_str(), system_info.dispenser_serial_number.size() + 1);
 
-        info.acceptor_unit = new char[system_info.acceptor_unit.size() + 1];
-        std::memcpy(info.acceptor_unit, system_info.acceptor_unit.c_str(), system_info.acceptor_unit.size() + 1);
+        info->acceptor_unit = new char[system_info.acceptor_unit.size() + 1];
+        std::memcpy(info->acceptor_unit, system_info.acceptor_unit.c_str(), system_info.acceptor_unit.size() + 1);
 
-        info.acceptor_serial_number = new char[system_info.acceptor_serial_number.size() + 1];
-        std::memcpy(info.acceptor_serial_number, system_info.acceptor_serial_number.c_str(), system_info.acceptor_serial_number.size() + 1);
+        info->acceptor_serial_number = new char[system_info.acceptor_serial_number.size() + 1];
+        std::memcpy(info->acceptor_serial_number, system_info.acceptor_serial_number.c_str(), system_info.acceptor_serial_number.size() + 1);
+        return 0;
     }
-    return info;
+    catch (const std::exception &e)
+    {
+        freeSystemInfo(info);
+        return -1;
+    }
 }
 
 void freeSystemInfo(SystemInfo *info)
 {
-    if (info)
+    if (!info)
     {
-        freeString(info->platform_type);
-        freeString(info->firmware_version);
-        freeString(info->serial_number);
-        freeString(info->dispenser_unit);
-        freeString(info->dispenser_serial_number);
-        freeString(info->acceptor_unit);
-        freeString(info->acceptor_serial_number);
+        return;
     }
+
+    freeString(info->platform_type);
+    freeString(info->firmware_version);
+    freeString(info->serial_number);
+    freeString(info->dispenser_unit);
+    freeString(info->dispenser_serial_number);
+    freeString(info->acceptor_unit);
+    freeString(info->acceptor_serial_number);
+
+    *info = SystemInfo{};
 }
 void freeString(const char *str)
 {
