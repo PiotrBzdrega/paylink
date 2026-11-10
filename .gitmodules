@@ -1,0 +1,3 @@
+[submodule "paylink_dotnet_example"]
+	path = paylink_dotnet_example
+	url = https://github.com/PiotrBzdrega/paylink_dotnet_example.git
